@@ -583,7 +583,9 @@ function resetBets() {
 }
 
 async function runBettingRound() {
-    const startPlayer = gameState.currentPlayerIndex;
+    // Count how many active players need to act at the start
+    const startingActivePlayers = getActivePlayers().filter(p => !p.allIn).length;
+    let playersActedCount = 0;
     let everyoneHasActed = false;
 
     while (true) {
@@ -603,15 +605,16 @@ async function runBettingRound() {
                 updateUI();
                 await waitForPlayerAction();
             }
+            playersActedCount++;
+
+            // Once enough players have acted, everyone has had a turn
+            if (playersActedCount >= startingActivePlayers) {
+                everyoneHasActed = true;
+            }
         }
 
         // Move to next player
         if (!nextPlayer()) break;
-
-        // Check if we've returned to the starting player
-        if (gameState.currentPlayerIndex === startPlayer) {
-            everyoneHasActed = true;
-        }
 
         // After everyone has acted at least once, check if round is complete
         if (everyoneHasActed && isRoundComplete()) {

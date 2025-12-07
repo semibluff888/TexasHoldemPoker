@@ -584,15 +584,17 @@ function resetBets() {
 
 async function runBettingRound() {
     const startPlayer = gameState.currentPlayerIndex;
-    let firstRound = true;
+    let everyoneHasActed = false;
 
     while (true) {
         const player = gameState.players[gameState.currentPlayerIndex];
 
+        // If only one player remains, end the round
         if (getPlayersInHand().length === 1) {
             break;
         }
 
+        // Allow the current player to act if they're active
         if (!player.folded && !player.allIn && player.chips > 0) {
             if (player.isAI) {
                 await delay(800);
@@ -603,15 +605,18 @@ async function runBettingRound() {
             }
         }
 
+        // Move to next player
         if (!nextPlayer()) break;
 
-        if (gameState.currentPlayerIndex === startPlayer && !firstRound) {
-            if (isRoundComplete()) break;
+        // Check if we've returned to the starting player
+        if (gameState.currentPlayerIndex === startPlayer) {
+            everyoneHasActed = true;
         }
 
-        firstRound = false;
-
-        if (isRoundComplete() && !firstRound) break;
+        // After everyone has acted at least once, check if round is complete
+        if (everyoneHasActed && isRoundComplete()) {
+            break;
+        }
     }
 }
 

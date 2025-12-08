@@ -83,24 +83,24 @@ body {
     background: var(--glass-bg);
     backdrop-filter: blur(10px);
     border: 1px solid var(--glass-border);
-    border-radius: 15px;
-    padding: 10px 25px;
+    border-radius: 12px;
+    padding: 6px 16px;
     position: absolute;
-    top: 30%;
-    left: 50%;
+    top: 33%;
+    left: 63%;
     transform: translate(-50%, -50%);
     z-index: 10;
 }
 
 .pot-label {
-    font-size: 0.8rem;
+    font-size: 0.65rem;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 2px;
+    letter-spacing: 1px;
 }
 
 .pot-amount {
-    font-size: 2rem;
+    font-size: 1.4rem;
     font-weight: 700;
     color: var(--accent-gold);
     text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
@@ -337,25 +337,25 @@ body {
 
 /* Dealer chip positioned beside cards, toward table center */
 .player-top .dealer-chip {
-    bottom: -35px;
+    bottom: -25px;
     left: 50%;
     transform: translateX(-50%);
 }
 
 .player-left .dealer-chip {
-    right: -35px;
+    right: -25px;
     top: 50%;
     transform: translateY(-50%);
 }
 
 .player-right .dealer-chip {
-    left: -35px;
+    left: -25px;
     top: 50%;
     transform: translateY(-50%);
 }
 
 .player-bottom .dealer-chip {
-    top: -35px;
+    top: -25px;
     left: 50%;
     transform: translateX(-50%);
 }
@@ -399,33 +399,52 @@ body {
     white-space: nowrap;
 }
 
-/* Position bet displays between player and table center */
+/* Bet clone for animation */
+.bet-clone {
+    position: fixed;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--accent-gold);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--accent-gold);
+    box-shadow: 0 2px 10px rgba(255, 215, 0, 0.3);
+    z-index: 1000;
+    pointer-events: none;
+}
+
+/* Position bet displays closer to players */
 .player-top .player-bet {
     top: 100%;
     left: 50%;
     transform: translateX(-50%);
-    margin-top: 80px;
+    margin-top: 25px;
 }
 
 .player-bottom .player-bet {
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    margin-bottom: 50px;
+    margin-bottom: 25px;
 }
 
 .player-left .player-bet {
     left: 100%;
     top: 50%;
     transform: translateY(-50%);
-    margin-left: 50px;
+    margin-left: 25px;
 }
 
 .player-right .player-bet {
     right: 100%;
     top: 50%;
     transform: translateY(-50%);
-    margin-right: 50px;
+    margin-right: 25px;
 }
 
 /* ===== Controls ===== */

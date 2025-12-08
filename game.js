@@ -600,7 +600,70 @@ function isRoundComplete() {
     return activePlayers.every(p => p.bet === gameState.currentBet);
 }
 
-function resetBets() {
+// Animate bets moving to pot
+async function animateBetsToPot() {
+    const potDisplay = document.querySelector('.pot-display');
+    if (!potDisplay) return;
+
+    const potRect = potDisplay.getBoundingClientRect();
+    const animations = [];
+
+    for (const player of gameState.players) {
+        if (player.bet > 0) {
+            const betDisplay = document.getElementById(`bet-${player.id}`);
+            if (!betDisplay || !betDisplay.classList.contains('visible')) continue;
+
+            const betRect = betDisplay.getBoundingClientRect();
+
+            // Create a clone for animation
+            const clone = document.createElement('div');
+            clone.className = 'bet-clone';
+            clone.innerHTML = `<span class="bet-amount">$${player.bet}</span>`;
+            clone.style.left = `${betRect.left}px`;
+            clone.style.top = `${betRect.top}px`;
+            clone.style.width = `${betRect.width}px`;
+            clone.style.height = `${betRect.height}px`;
+
+            document.body.appendChild(clone);
+
+            // Calculate target position (center of pot)
+            const targetX = potRect.left + potRect.width / 2 - betRect.width / 2;
+            const targetY = potRect.top + potRect.height / 2 - betRect.height / 2;
+
+            // Hide original bet display
+            betDisplay.classList.remove('visible');
+
+            // Animate clone to pot
+            const animation = new Promise(resolve => {
+                // Force reflow
+                clone.offsetHeight;
+
+                clone.style.transition = 'all 0.4s ease-in-out';
+                clone.style.left = `${targetX}px`;
+                clone.style.top = `${targetY}px`;
+                clone.style.transform = 'scale(0.5)';
+                clone.style.opacity = '0';
+
+                setTimeout(() => {
+                    clone.remove();
+                    resolve();
+                }, 400);
+            });
+
+            animations.push(animation);
+        }
+    }
+
+    // Wait for all animations to complete
+    if (animations.length > 0) {
+        await Promise.all(animations);
+    }
+}
+
+async function resetBets() {
+    // Animate bets moving to pot first
+    await animateBetsToPot();
+
     for (const player of gameState.players) {
         player.bet = 0;
     }
@@ -794,7 +857,7 @@ function postBlind(playerIndex, amount) {
 
 async function dealFlop() {
     gameState.phase = 'flop';
-    resetBets();
+    await resetBets();
 
     // Burn and deal 3 cards
     dealCard(); // Burn
@@ -813,7 +876,7 @@ async function dealFlop() {
 
 async function dealTurn() {
     gameState.phase = 'turn';
-    resetBets();
+    await resetBets();
 
     // Burn and deal 1 card
     dealCard(); // Burn
@@ -830,7 +893,7 @@ async function dealTurn() {
 
 async function dealRiver() {
     gameState.phase = 'river';
-    resetBets();
+    await resetBets();
 
     // Burn and deal 1 card
     dealCard(); // Burn
@@ -847,6 +910,9 @@ async function dealRiver() {
 
 async function showdown() {
     gameState.phase = 'showdown';
+
+    // Animate final bets to pot before showdown
+    await resetBets();
 
     const playersInHand = getPlayersInHand();
 

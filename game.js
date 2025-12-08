@@ -697,16 +697,30 @@ async function resetBets() {
 }
 
 async function runBettingRound() {
+    // Get players who can still act (not folded, not all-in, have chips)
+    const getActingPlayers = () => gameState.players.filter(p => !p.folded && !p.allIn && p.chips > 0);
+
+    // If only one or zero players can act, skip the betting round entirely
+    // (All others are either folded or all-in)
+    if (getActingPlayers().length <= 1) {
+        return;
+    }
+
     // Count how many active players need to act at the start
-    const startingActivePlayers = getActivePlayers().filter(p => !p.allIn).length;
+    const startingActivePlayers = getActingPlayers().length;
     let playersActedCount = 0;
     let everyoneHasActed = false;
 
     while (true) {
         const player = gameState.players[gameState.currentPlayerIndex];
 
-        // If only one player remains, end the round
+        // If only one player remains in hand (not folded), end the round
         if (getPlayersInHand().length === 1) {
+            break;
+        }
+
+        // If only one or zero players can still act, end the round
+        if (getActingPlayers().length <= 1 && everyoneHasActed) {
             break;
         }
 

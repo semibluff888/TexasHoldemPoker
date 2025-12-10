@@ -3,18 +3,7 @@
 // Game Constants
 const SUITS = ['♠', '♥', '♦', '♣'];
 const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
-const HAND_RANKS = {
-    'Royal Flush': 10,
-    'Straight Flush': 9,
-    'Four of a Kind': 8,
-    'Full House': 7,
-    'Flush': 6,
-    'Straight': 5,
-    'Three of a Kind': 4,
-    'Two Pair': 3,
-    'One Pair': 2,
-    'High Card': 1
-};
+// Hand ranks are evaluated using numeric scores in evaluateFiveCards()
 
 const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
@@ -31,9 +20,7 @@ let gameState = {
     currentPlayerIndex: 0,
     phase: 'idle', // idle, preflop, flop, turn, river, showdown
     minRaise: BIG_BLIND,
-    lastRaiseAmount: 0,
-    displayedCommunityCards: 0,
-    isFirstGame: true
+    displayedCommunityCards: 0
 };
 
 // Initialize Players
@@ -466,7 +453,6 @@ function playerRaise(playerId, totalBet) {
     gameState.pot += raiseAmount;
     gameState.currentBet = totalBet;
     gameState.minRaise = Math.max(gameState.minRaise, actualRaise);
-    gameState.lastRaiseAmount = actualRaise;
 
     if (player.chips === 0) {
         player.allIn = true;
@@ -599,8 +585,7 @@ function nextPlayer() {
         attempts++;
     } while (
         (gameState.players[gameState.currentPlayerIndex].folded ||
-            gameState.players[gameState.currentPlayerIndex].allIn ||
-            gameState.players[gameState.currentPlayerIndex].chips === 0) &&
+            gameState.players[gameState.currentPlayerIndex].allIn) &&
         attempts < 4
     );
 
@@ -613,15 +598,6 @@ function getActivePlayers() {
 
 function getPlayersInHand() {
     return gameState.players.filter(p => !p.folded);
-}
-
-function isRoundComplete() {
-    const activePlayers = getActivePlayers().filter(p => !p.allIn);
-
-    if (activePlayers.length <= 1) return true;
-
-    // Check if all active players have matched the current bet
-    return activePlayers.every(p => p.bet === gameState.currentBet);
 }
 
 // Animate bets moving to pot
@@ -715,16 +691,8 @@ async function runBettingRound() {
 
     // Track which players have acted since the last raise/bet
     // When someone raises, everyone else needs to respond
+    // Start empty - every player must act at least once per round
     let playersActedSinceLastRaise = new Set();
-
-    // Initialize: if there's already a bet (e.g., blinds), no one has responded yet
-    // If no bet, mark everyone as having "acted" so we just need one round
-    if (gameState.currentBet === 0) {
-        // No bet yet - everyone gets one chance to act
-        for (const p of getActingPlayers()) {
-            playersActedSinceLastRaise.add(p.id);
-        }
-    }
 
     while (true) {
         const player = gameState.players[gameState.currentPlayerIndex];
@@ -1338,23 +1306,17 @@ document.getElementById('raise-slider').addEventListener('input', (e) => {
     document.getElementById('raise-amount').textContent = e.target.value;
 });
 
-document.getElementById('btn-new-game').addEventListener('click', () => {
+// Helper for reset and start new game
+function resetAndStartNewGame() {
     document.getElementById('winner-popup').classList.remove('visible');
-    // Reset all players' chips to initial amount
     for (const player of gameState.players) {
         player.chips = STARTING_CHIPS;
     }
-    startNewGame(true); // true = randomize dealer position
-});
+    startNewGame(true);
+}
 
-document.getElementById('btn-continue').addEventListener('click', () => {
-    document.getElementById('winner-popup').classList.remove('visible');
-    // Reset all players' chips to initial amount
-    for (const player of gameState.players) {
-        player.chips = STARTING_CHIPS;
-    }
-    startNewGame(true); // true = randomize dealer position
-});
+document.getElementById('btn-new-game').addEventListener('click', resetAndStartNewGame);
+document.getElementById('btn-continue').addEventListener('click', resetAndStartNewGame);
 
 // Initialize
 initPlayers();

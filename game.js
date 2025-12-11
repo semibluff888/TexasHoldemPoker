@@ -275,33 +275,52 @@ function showAction(playerId, action) {
         actionEl.classList.remove('visible');
     }, 2000);
 
-    // Log the action
+    // Log the action with player's current chip amount
     const player = gameState.players[playerId];
     const name = playerId === 0 ? 'You' : player.name;
-    showMessage(`${name}: ${action}`);
+    const chipAmount = player.chips + player.bet; // Show chips before this action
+    showMessage(`${name}($${chipAmount}): ${action}`);
+}
+
+// Helper to append log entry HTML to current hand's history
+// If viewing past hand, save to memory; if viewing current hand, also append to DOM
+function appendToCurrentHandHistory(entryHTML) {
+    // Initialize current hand's history array if needed
+    if (!handHistories[handNumber - 1]) {
+        handHistories[handNumber - 1] = [];
+    }
+
+    // Always save to the current hand's history array
+    handHistories[handNumber - 1].push(entryHTML);
+
+    // Only update the DOM if viewing the current hand
+    if (currentViewingHand === handNumber) {
+        const history = document.getElementById('action-history');
+        if (history) {
+            history.insertAdjacentHTML('beforeend', entryHTML);
+            history.scrollTop = history.scrollHeight;
+        }
+    }
 }
 
 function showMessage(message) {
     if (!message) return;
-    const history = document.getElementById('action-history');
-    if (history) {
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
 
-        const now = new Date();
-        const time = now.toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" });
-        const phase = (gameState.phase === 'idle' ? 'Start' : gameState.phase).toUpperCase();
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" });
+    const phase = (gameState.phase === 'idle' ? 'Start' : gameState.phase).toUpperCase();
 
-        entry.innerHTML = `
+    const entryHTML = `
+        <div class="log-entry">
             <div class="log-time">
                 <span>${time}</span>
                 <span class="log-phase">${phase}</span>
             </div>
             <div class="log-content">${message}</div>
-        `;
-        history.appendChild(entry);
-        history.scrollTop = history.scrollHeight;
-    }
+        </div>
+    `;
+
+    appendToCurrentHandHistory(entryHTML);
 }
 
 // Hand Evaluation
@@ -794,17 +813,15 @@ function resolvePlayerAction() {
 
 // Game Phases
 async function startNewGame(randomizeDealer = false) {
-    // Save current hand's history before starting new hand
-    const history = document.getElementById('action-history');
-    if (history && handNumber > 0 && history.innerHTML.trim() !== '') {
-        handHistories[handNumber - 1] = history.innerHTML;
-    }
-
-    // Increment hand counter
+    // Increment hand counter (previous hand's history is already saved in array)
     handNumber++;
     currentViewingHand = handNumber;
 
-    // Clear action history
+    // Initialize new hand's history array
+    handHistories[handNumber - 1] = [];
+
+    // Clear action history display
+    const history = document.getElementById('action-history');
     if (history) {
         history.innerHTML = '';
     }
@@ -949,7 +966,6 @@ async function dealFlop() {
     gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
 
     updateUI();
-    showMessage('Flop dealt!');
 
     await delay(500);
     await runBettingRound();
@@ -966,7 +982,6 @@ async function dealTurn() {
     gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
 
     updateUI();
-    showMessage('Turn dealt!');
 
     await delay(500);
     await runBettingRound();
@@ -983,7 +998,6 @@ async function dealRiver() {
     gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
 
     updateUI();
-    showMessage('River dealt!');
 
     await delay(500);
     await runBettingRound();
@@ -1088,9 +1102,8 @@ async function showdown() {
             showMessage(`${potName}: ${winnerNames} wins $${winAmount} with ${handName}`);
         }
 
-        // Log showdown details to action history
-        const totalWin = Object.values(totalWinAmounts).reduce((a, b) => a + b, 0) / allWinners.length;
-        logShowdownDetails(playersInHand, allWinners, firstHandName, Math.floor(totalWin));
+        // Log showdown details to action history (pass individual win amounts)
+        logShowdownDetails(playersInHand, allWinners, firstHandName, totalWinAmounts);
 
         // Highlight all winners
         highlightWinners(allWinners, firstHandName);
@@ -1160,96 +1173,88 @@ function formatCardsText(cards) {
 
 // Log fold win details in showdown-style format
 function logFoldWinDetails(winner, winAmount) {
-    const history = document.getElementById('action-history');
-    if (!history) return;
-
-    const entry = document.createElement('div');
-    entry.className = 'log-entry showdown-details';
-
     const now = new Date();
     const time = now.toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" });
 
-    let detailsHTML = `
-        <div class="log-time">
-            <span>${time}</span>
-            <span class="log-phase">FOLD WIN</span>
-        </div>
-        <div class="log-content">
-            <div class="showdown-section">
-                <strong>Winner's Hole Cards:</strong>
-                <div class="player-hand winner-hand">
-                    ${winner.name} ⭐: ${formatCardsText(winner.cards)}
-                </div>
+    const entryHTML = `
+        <div class="log-entry showdown-details">
+            <div class="log-time">
+                <span>${time}</span>
+                <span class="log-phase">FOLD WIN</span>
             </div>
-            <div class="showdown-section winner-section">
-                <strong>🏆 Winner:</strong> ${winner.name}
-                <br><strong>Result:</strong> Everyone Folded
-                <br><strong>Prize:</strong> $${winAmount}
+            <div class="log-content">
+                <div class="showdown-section">
+                    <strong>Winner's Hole Cards:</strong>
+                    <div class="player-hand winner-hand">
+                        ${winner.name} ⭐: ${formatCardsText(winner.cards)}
+                    </div>
+                </div>
+                <div class="showdown-section winner-section">
+                    <strong>🏆 Winner:</strong> ${winner.name}
+                    <br><strong>Result:</strong> Everyone Folded
+                    <br><strong>Prize:</strong> $${winAmount}
+                </div>
             </div>
         </div>
     `;
 
-    entry.innerHTML = detailsHTML;
-    history.appendChild(entry);
-    history.scrollTop = history.scrollHeight;
+    appendToCurrentHandHistory(entryHTML);
 }
 
 // Log detailed showdown information to action history
-function logShowdownDetails(playersInHand, winners, handName, winAmount) {
-    const history = document.getElementById('action-history');
-    if (!history) return;
-
-    const entry = document.createElement('div');
-    entry.className = 'log-entry showdown-details';
-
+function logShowdownDetails(playersInHand, winners, handName, totalWinAmounts) {
     const now = new Date();
     const time = now.toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" });
 
-    // Build showdown details HTML
-    let detailsHTML = `
-        <div class="log-time">
-            <span>${time}</span>
-            <span class="log-phase">SHOWDOWN</span>
-        </div>
-        <div class="log-content">
-            <div class="showdown-section">
-                <strong>Community Cards:</strong> ${formatCardsText(gameState.communityCards)}
-            </div>
-            <div class="showdown-section">
-                <strong>Players' Hole Cards:</strong>
-    `;
-
-    // Add each player's hole cards
+    // Build player hole cards HTML
+    let playerCardsHTML = '';
     for (const player of playersInHand) {
         const isWinner = winners.some(w => w.id === player.id);
         const winnerMark = isWinner ? ' ⭐' : '';
-        detailsHTML += `
+        playerCardsHTML += `
             <div class="player-hand ${isWinner ? 'winner-hand' : ''}">
                 ${player.name}${winnerMark}: ${formatCardsText(player.cards)}
             </div>
         `;
     }
 
-    // Build best cards info for each winner
+    // Build best cards info for each winner with their prize
     const winnersCardsInfo = winners.map(w => {
         const bestCards = w.handResult && w.handResult.bestCards ? formatCardsText(w.handResult.bestCards) : 'N/A';
         return `${bestCards}(${w.name})`;
     }).join('<br>');
 
-    detailsHTML += `
+    // Build prize info for each winner
+    const prizeInfo = winners.map(w => {
+        const winAmount = totalWinAmounts[w.id] || 0;
+        return `${w.name}: $${winAmount}`;
+    }).join('<br>');
+
+    const entryHTML = `
+        <div class="log-entry showdown-details">
+            <div class="log-time">
+                <span>${time}</span>
+                <span class="log-phase">SHOWDOWN</span>
             </div>
-            <div class="showdown-section winner-section">
-                <strong>🏆 Winner:</strong> ${winners.map(w => w.name).join(' & ')}
-                <br><strong>Winning Hand:</strong> ${handName}
-                <br><strong>Best 5 Cards:</strong><br>${winnersCardsInfo}
-                <br><strong>Prize:</strong> $${winAmount}${winners.length > 1 ? ' each (Split Pot)' : ''}
+            <div class="log-content">
+                <div class="showdown-section">
+                    <strong>Community Cards:</strong> ${formatCardsText(gameState.communityCards)}
+                </div>
+                <div class="showdown-section">
+                    <strong>Players' Hole Cards:</strong>
+                    ${playerCardsHTML}
+                </div>
+                <div class="showdown-section winner-section">
+                    <strong>🏆 Winner:</strong> ${winners.map(w => w.name).join(' & ')}
+                    <br><strong>Winning Hand:</strong> ${handName}
+                    <br><strong>Best 5 Cards:</strong><br>${winnersCardsInfo}
+                    <br><strong>Prize:</strong><br>${prizeInfo}
+                </div>
             </div>
         </div>
     `;
 
-    entry.innerHTML = detailsHTML;
-    history.appendChild(entry);
-    history.scrollTop = history.scrollHeight;
+    appendToCurrentHandHistory(entryHTML);
 }
 
 // Update chips display only after showdown (called within showdown)
@@ -1473,11 +1478,6 @@ function navigateToHand(direction) {
     const history = document.getElementById('action-history');
     if (!history) return;
 
-    // Save current hand's history if viewing current hand
-    if (currentViewingHand === handNumber && history.innerHTML.trim() !== '') {
-        handHistories[handNumber - 1] = history.innerHTML;
-    }
-
     // Calculate target hand
     let targetHand = currentViewingHand + direction;
 
@@ -1490,11 +1490,11 @@ function navigateToHand(direction) {
 
     currentViewingHand = targetHand;
 
-    // Load the target hand's history
-    if (handHistories[targetHand - 1]) {
-        history.innerHTML = handHistories[targetHand - 1];
+    // Load the target hand's history from array
+    const handHistory = handHistories[targetHand - 1];
+    if (handHistory && Array.isArray(handHistory) && handHistory.length > 0) {
+        history.innerHTML = handHistory.join('');
     } else {
-        // Fallback: show empty
         history.innerHTML = '';
     }
 
@@ -1527,9 +1527,10 @@ function returnToCurrentHand() {
 
     currentViewingHand = handNumber;
 
-    // Load current hand's history
-    if (handHistories[handNumber - 1]) {
-        history.innerHTML = handHistories[handNumber - 1];
+    // Load current hand's history from array
+    const handHistory = handHistories[handNumber - 1];
+    if (handHistory && Array.isArray(handHistory) && handHistory.length > 0) {
+        history.innerHTML = handHistory.join('');
     } else {
         history.innerHTML = '';
     }

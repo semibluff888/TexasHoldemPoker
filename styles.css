@@ -1219,3 +1219,150 @@ body {
         font-size: 0.8rem;
     }
 }
+
+/* ===== Help Link ===== */
+.help-link {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
+    color: var(--accent-gold);
+    font-size: 1.4rem;
+    font-weight: 700;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+}
+
+.help-link:hover {
+    background: rgba(255, 215, 0, 0.2);
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.3);
+}
+
+/* ===== Help Popup ===== */
+.help-popup {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+}
+
+.help-popup.visible {
+    display: flex;
+}
+
+.help-content {
+    background: linear-gradient(145deg, var(--secondary) 0%, var(--primary) 100%);
+    border: 2px solid var(--accent-gold);
+    border-radius: 20px;
+    padding: 30px 40px;
+    max-width: 720px;
+    width: 95%;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.help-content h2 {
+    color: var(--accent-gold);
+    text-align: center;
+    margin-bottom: 10px;
+    font-size: 1.8rem;
+}
+
+.help-subtitle {
+    text-align: center;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+    font-style: italic;
+}
+
+.hand-rankings-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 25px;
+}
+
+.hand-rankings-table tr {
+    border-bottom: 1px solid var(--glass-border);
+}
+
+.hand-rankings-table tr:last-child {
+    border-bottom: none;
+}
+
+.hand-rankings-table td {
+    padding: 12px 8px;
+    color: var(--text-primary);
+}
+
+.hand-rankings-table .rank {
+    color: var(--accent-gold);
+    font-weight: 700;
+    width: 30px;
+    text-align: center;
+}
+
+.hand-rankings-table .hand-name {
+    font-weight: 600;
+    color: var(--accent-green);
+    width: 140px;
+}
+
+.hand-rankings-table .hand-desc {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.hand-rankings-table .hand-example {
+    display: flex;
+    gap: 4px;
+}
+
+.card-sample {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(145deg, #ffffff 0%, #f0f0f0 100%);
+    border: 1px solid #ddd;
+    border-radius: 3px;
+    padding: 6px 0;
+    font-size: 0.7rem;
+    font-weight: 700;
+    width: 28px;
+    height: 32px;
+}
+
+.card-sample.spade,
+.card-sample.club {
+    color: #1a1a2e;
+}
+
+.card-sample.heart,
+.card-sample.diamond {
+    color: #e94560;
+}
+
+.btn-ok {
+    display: block;
+    margin: 0 auto;
+    background: linear-gradient(145deg, var(--accent-gold) 0%, #daa520 100%);
+    color: var(--primary);
+    padding: 12px 40px;
+    font-weight: 600;
+}

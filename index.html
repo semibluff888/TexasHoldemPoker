@@ -13,6 +13,7 @@
     <div class="game-container">
         <!-- Game Header -->
         <header class="game-header">
+            <a href="#" class="help-link" id="help-link" title="Hand Rankings Help">?</a>
             <h1>♠ Texas Hold'em ♥</h1>
             <div class="sound-controls">
                 <button class="btn-sound" id="btn-music" title="Toggle Music">🎵</button>
@@ -168,6 +169,97 @@
                 <h2 id="winner-title">Winner!</h2>
                 <p id="winner-details"></p>
                 <button class="btn btn-continue" id="btn-continue">Continue</button>
+            </div>
+        </div>
+
+        <!-- Help Popup -->
+        <div class="help-popup" id="help-popup">
+            <div class="help-content">
+                <h2>🃏 Poker Hand Rankings</h2>
+                <p class="help-subtitle">From highest to lowest:</p>
+                <table class="hand-rankings-table">
+                    <tr>
+                        <td class="rank">1</td>
+                        <td class="hand-name">Royal Flush</td>
+                        <td class="hand-example"><span class="card-sample spade">A♠</span><span
+                                class="card-sample spade">K♠</span><span class="card-sample spade">Q♠</span><span
+                                class="card-sample spade">J♠</span><span class="card-sample spade">10♠</span></td>
+                        <td class="hand-desc">A, K, Q, J, 10 of the same suit</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">2</td>
+                        <td class="hand-name">Straight Flush</td>
+                        <td class="hand-example"><span class="card-sample heart">9♥</span><span
+                                class="card-sample heart">8♥</span><span class="card-sample heart">7♥</span><span
+                                class="card-sample heart">6♥</span><span class="card-sample heart">5♥</span></td>
+                        <td class="hand-desc">Five consecutive cards of the same suit</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">3</td>
+                        <td class="hand-name">Four of a Kind</td>
+                        <td class="hand-example"><span class="card-sample spade">K♠</span><span
+                                class="card-sample heart">K♥</span><span class="card-sample diamond">K♦</span><span
+                                class="card-sample club">K♣</span><span class="card-sample spade">7♠</span></td>
+                        <td class="hand-desc">Four cards of the same rank</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">4</td>
+                        <td class="hand-name">Full House</td>
+                        <td class="hand-example"><span class="card-sample spade">Q♠</span><span
+                                class="card-sample heart">Q♥</span><span class="card-sample diamond">Q♦</span><span
+                                class="card-sample club">9♣</span><span class="card-sample spade">9♠</span></td>
+                        <td class="hand-desc">Three of a kind plus a pair</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">5</td>
+                        <td class="hand-name">Flush</td>
+                        <td class="hand-example"><span class="card-sample diamond">A♦</span><span
+                                class="card-sample diamond">J♦</span><span class="card-sample diamond">8♦</span><span
+                                class="card-sample diamond">4♦</span><span class="card-sample diamond">2♦</span></td>
+                        <td class="hand-desc">Five cards of the same suit</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">6</td>
+                        <td class="hand-name">Straight</td>
+                        <td class="hand-example"><span class="card-sample club">10♣</span><span
+                                class="card-sample spade">9♠</span><span class="card-sample heart">8♥</span><span
+                                class="card-sample diamond">7♦</span><span class="card-sample club">6♣</span></td>
+                        <td class="hand-desc">Five consecutive cards of any suit</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">7</td>
+                        <td class="hand-name">Three of a Kind</td>
+                        <td class="hand-example"><span class="card-sample spade">7♠</span><span
+                                class="card-sample heart">7♥</span><span class="card-sample diamond">7♦</span><span
+                                class="card-sample club">K♣</span><span class="card-sample spade">3♠</span></td>
+                        <td class="hand-desc">Three cards of the same rank</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">8</td>
+                        <td class="hand-name">Two Pair</td>
+                        <td class="hand-example"><span class="card-sample spade">J♠</span><span
+                                class="card-sample heart">J♥</span><span class="card-sample diamond">4♦</span><span
+                                class="card-sample club">4♣</span><span class="card-sample spade">A♠</span></td>
+                        <td class="hand-desc">Two different pairs</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">9</td>
+                        <td class="hand-name">One Pair</td>
+                        <td class="hand-example"><span class="card-sample spade">10♠</span><span
+                                class="card-sample heart">10♥</span><span class="card-sample diamond">8♦</span><span
+                                class="card-sample club">5♣</span><span class="card-sample spade">2♠</span></td>
+                        <td class="hand-desc">Two cards of the same rank</td>
+                    </tr>
+                    <tr>
+                        <td class="rank">10</td>
+                        <td class="hand-name">High Card</td>
+                        <td class="hand-example"><span class="card-sample spade">A♠</span><span
+                                class="card-sample heart">J♥</span><span class="card-sample diamond">8♦</span><span
+                                class="card-sample club">4♣</span><span class="card-sample spade">2♠</span></td>
+                        <td class="hand-desc">Highest card when no other hand is made</td>
+                    </tr>
+                </table>
+                <button class="btn btn-ok" id="btn-help-ok">OK</button>
             </div>
         </div>
     </div>

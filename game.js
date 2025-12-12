@@ -1896,6 +1896,23 @@ function returnToCurrentHand() {
 
 document.getElementById('btn-return-hand').addEventListener('click', returnToCurrentHand);
 
+// ===== Help Popup =====
+document.getElementById('help-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('help-popup').classList.add('visible');
+});
+
+document.getElementById('btn-help-ok').addEventListener('click', () => {
+    document.getElementById('help-popup').classList.remove('visible');
+});
+
+// Close help popup when clicking outside the content
+document.getElementById('help-popup').addEventListener('click', (e) => {
+    if (e.target.id === 'help-popup') {
+        document.getElementById('help-popup').classList.remove('visible');
+    }
+});
+
 // Initialize
 initPlayers();
 SoundManager.init();

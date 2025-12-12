@@ -1025,6 +1025,9 @@ async function dealFlop(thisGameId) {
     gameState.phase = 'flop';
     await resetBets(thisGameId);
 
+    // Check if game was cancelled
+    if (currentGameId !== thisGameId) return;
+
     // Burn and deal 3 cards
     dealCard(); // Burn
     for (let i = 0; i < 3; i++) {
@@ -1036,6 +1039,10 @@ async function dealFlop(thisGameId) {
     updateUI();
 
     await delay(500);
+
+    // Check if game was cancelled after delay
+    if (currentGameId !== thisGameId) return;
+
     await runBettingRound();
 }
 
@@ -1043,6 +1050,9 @@ async function dealTurn(thisGameId) {
     gameState.phase = 'turn';
     await resetBets(thisGameId);
 
+    // Check if game was cancelled
+    if (currentGameId !== thisGameId) return;
+
     // Burn and deal 1 card
     dealCard(); // Burn
     gameState.communityCards.push(dealCard());
@@ -1052,6 +1062,10 @@ async function dealTurn(thisGameId) {
     updateUI();
 
     await delay(500);
+
+    // Check if game was cancelled after delay
+    if (currentGameId !== thisGameId) return;
+
     await runBettingRound();
 }
 
@@ -1059,6 +1073,9 @@ async function dealRiver(thisGameId) {
     gameState.phase = 'river';
     await resetBets(thisGameId);
 
+    // Check if game was cancelled
+    if (currentGameId !== thisGameId) return;
+
     // Burn and deal 1 card
     dealCard(); // Burn
     gameState.communityCards.push(dealCard());
@@ -1068,6 +1085,10 @@ async function dealRiver(thisGameId) {
     updateUI();
 
     await delay(500);
+
+    // Check if game was cancelled after delay
+    if (currentGameId !== thisGameId) return;
+
     await runBettingRound();
 }
 
@@ -1077,6 +1098,9 @@ async function showdown(thisGameId) {
     // Animate final bets to pot before showdown
     await resetBets(thisGameId);
 
+    // Check if game was cancelled
+    if (currentGameId !== thisGameId) return;
+
     const playersInHand = getPlayersInHand();
 
     // Reveal all cards
@@ -1085,6 +1109,9 @@ async function showdown(thisGameId) {
     }
 
     await delay(500);
+
+    // Check if game was cancelled after delay
+    if (currentGameId !== thisGameId) return;
 
     if (playersInHand.length === 1) {
         // Everyone folded - highlight winner and their hole cards
@@ -1114,6 +1141,9 @@ async function showdown(thisGameId) {
 
         // Animate pot to winner
         await animatePotToWinners([winner], [winAmount]);
+
+        // Check if game was cancelled after animation
+        if (currentGameId !== thisGameId) return;
 
         // Update chips after animation
         winner.chips += winAmount;
@@ -1178,6 +1208,9 @@ async function showdown(thisGameId) {
 
         // Animate pot to all winners (simplified - just show total)
         await animatePotToWinners(allWinners, allWinners.map(w => totalWinAmounts[w.id]));
+
+        // Check if game was cancelled after animation
+        if (currentGameId !== thisGameId) return;
     }
 
     // Finalize showdown - update chips display and start next game
@@ -1514,7 +1547,8 @@ document.getElementById('raise-slider').addEventListener('input', (e) => {
 
 // Helper for reset and start new game
 let lastNewGameClickTime = 0;
-const NEW_GAME_DEBOUNCE_MS = 3000; // 3 seconds cooldown (card dealing ~1.6s + first AI action ~0.8s + buffer)
+let cooldownIntervalId = null;
+const NEW_GAME_DEBOUNCE_MS = 5000; // 5 seconds cooldown
 
 function resetAndStartNewGame() {
     // Debounce: prevent double-clicking within cooldown period
@@ -1524,13 +1558,32 @@ function resetAndStartNewGame() {
     }
     lastNewGameClickTime = now;
 
-    // Add cooldown visual style to button
+    // Add cooldown visual style to button with countdown timer
     const newGameBtn = document.getElementById('btn-new-game');
     if (newGameBtn) {
         newGameBtn.classList.add('cooldown');
-        setTimeout(() => {
-            newGameBtn.classList.remove('cooldown');
-        }, NEW_GAME_DEBOUNCE_MS);
+
+        // Start countdown timer
+        let secondsRemaining = Math.ceil(NEW_GAME_DEBOUNCE_MS / 1000);
+        newGameBtn.textContent = `NEW GAME (${secondsRemaining})`;
+
+        // Clear any existing interval
+        if (cooldownIntervalId) {
+            clearInterval(cooldownIntervalId);
+        }
+
+        cooldownIntervalId = setInterval(() => {
+            secondsRemaining--;
+            if (secondsRemaining > 0) {
+                newGameBtn.textContent = `NEW GAME (${secondsRemaining})`;
+            } else {
+                // Cooldown finished
+                newGameBtn.textContent = 'NEW GAME';
+                newGameBtn.classList.remove('cooldown');
+                clearInterval(cooldownIntervalId);
+                cooldownIntervalId = null;
+            }
+        }, 1000);
     }
 
     document.getElementById('winner-popup').classList.remove('visible');

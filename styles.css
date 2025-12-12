@@ -76,6 +76,86 @@ body {
     }
 }
 
+/* ===== Sound Controls ===== */
+.sound-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: absolute;
+    right: 150px;
+    top: 50%;
+    transform: translateY(-50%);
+}
+
+.btn-sound {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-sound:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+}
+
+.btn-sound.muted {
+    opacity: 0.5;
+    background: rgba(100, 100, 100, 0.3);
+}
+
+.btn-sound.muted::after {
+    content: '';
+    position: absolute;
+    width: 2px;
+    height: 24px;
+    background: var(--accent);
+    transform: rotate(45deg);
+}
+
+#volume-slider {
+    width: 80px;
+    height: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+}
+
+#volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-gold);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+#volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+#volume-slider::-moz-range-thumb {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent-gold);
+    cursor: pointer;
+    border: none;
+}
+
 .pot-display {
     display: flex;
     flex-direction: row;
@@ -523,6 +603,30 @@ body {
     pointer-events: none;
 }
 
+.controls.active {
+    border: 2px solid #c0c0c0;
+    box-shadow: 0 0 20px rgba(192, 192, 192, 0.5),
+        0 0 40px rgba(192, 192, 192, 0.3),
+        0 0 60px rgba(192, 192, 192, 0.1);
+    animation: actionBarGlow 1.5s ease-in-out infinite;
+}
+
+@keyframes actionBarGlow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 20px rgba(192, 192, 192, 0.5),
+            0 0 40px rgba(192, 192, 192, 0.3),
+            0 0 60px rgba(192, 192, 192, 0.1);
+    }
+
+    50% {
+        box-shadow: 0 0 30px rgba(192, 192, 192, 0.7),
+            0 0 50px rgba(192, 192, 192, 0.5),
+            0 0 70px rgba(192, 192, 192, 0.3);
+    }
+}
+
 .btn {
     padding: 12px 24px;
     border: none;
@@ -579,13 +683,15 @@ body {
 .btn-new-game {
     background: linear-gradient(145deg, var(--accent-green) 0%, #00b894 100%);
     color: var(--primary);
-    padding: 10px 25px;
+    padding: 10px 0;
     font-size: 0.9rem;
     position: absolute;
     right: 0;
     top: 50%;
     transform: translateY(-50%);
     margin-top: 0;
+    width: 140px;
+    text-align: center;
 }
 
 .btn-new-game.cooldown {

@@ -9,6 +9,165 @@ const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
 const STARTING_CHIPS = 1000;
 
+// ===== Sound Manager =====
+const SoundManager = {
+    // Sound URLs from free sources (Mixkit - royalty-free)
+    sounds: {
+        cardDeal: 'SOUND/card_deal.mp3',
+        cardFlip: 'SOUND/card_deal.mp3',
+        chips: 'SOUND/chips.mp3',
+        check: 'SOUND/check.mp3',
+        fold: 'SOUND/fold.mp3',
+        win: 'SOUND/win.mp3',
+        // win: 'SOUND/win2.wav',
+        yourTurn: 'SOUND/ding.mp3',
+        allIn: 'SOUND/all in.mp3'
+    },
+
+    // Background music (lofi/chill)
+    musicUrl: 'SOUND/Jazz at Mladost Club - Blue Monk.mp3',
+
+    // Audio elements cache
+    audioCache: {},
+    musicElement: null,
+
+    // State
+    musicEnabled: true,
+    sfxEnabled: true,
+    volume: 0.5,
+
+    // Initialize the sound manager
+    init() {
+        // Pre-load sounds
+        for (const [name, url] of Object.entries(this.sounds)) {
+            this.audioCache[name] = new Audio(url);
+            this.audioCache[name].volume = this.volume;
+        }
+
+        // Setup background music
+        this.musicElement = new Audio(this.musicUrl);
+        this.musicElement.loop = true;
+        this.musicElement.volume = this.volume * 0.5; // Music volume factor
+
+        // Setup UI controls
+        this.setupControls();
+    },
+
+    // Setup UI control event listeners
+    setupControls() {
+        const musicBtn = document.getElementById('btn-music');
+        const sfxBtn = document.getElementById('btn-sfx');
+        const volumeSlider = document.getElementById('volume-slider');
+
+        if (musicBtn) {
+            musicBtn.addEventListener('click', () => this.toggleMusic());
+        }
+
+        if (sfxBtn) {
+            sfxBtn.addEventListener('click', () => this.toggleSfx());
+        }
+
+        if (volumeSlider) {
+            volumeSlider.value = this.volume * 100;
+            volumeSlider.addEventListener('input', (e) => {
+                this.setVolume(e.target.value / 100);
+            });
+        }
+    },
+
+    // Toggle background music
+    toggleMusic() {
+        this.musicEnabled = !this.musicEnabled;
+        const btn = document.getElementById('btn-music');
+
+        if (this.musicEnabled) {
+            btn.classList.remove('muted');
+            btn.textContent = '🎵';
+            // Restore volume (music was playing silently)
+            if (this.musicElement) {
+                this.musicElement.volume = this.volume * 0.5;
+            }
+        } else {
+            btn.classList.add('muted');
+            btn.textContent = '🎵';
+            // Mute by setting volume to 0 (music keeps playing)
+            if (this.musicElement) {
+                this.musicElement.volume = 0;
+            }
+        }
+    },
+
+    // Toggle sound effects
+    toggleSfx() {
+        this.sfxEnabled = !this.sfxEnabled;
+        const btn = document.getElementById('btn-sfx');
+
+        if (this.sfxEnabled) {
+            btn.classList.remove('muted');
+            btn.textContent = '🔊';
+        } else {
+            btn.classList.add('muted');
+            btn.textContent = '🔇';
+        }
+    },
+
+    // Set volume (0-1)
+    setVolume(value) {
+        this.volume = Math.max(0, Math.min(1, value));
+
+        // Update all cached audio volumes
+        for (const audio of Object.values(this.audioCache)) {
+            audio.volume = this.volume;
+        }
+
+        // Update music volume (only if music is enabled)
+        if (this.musicElement && this.musicEnabled) {
+            this.musicElement.volume = this.volume * 0.5;
+        }
+    },
+
+    // Play a sound effect
+    play(soundName) {
+        if (!this.sfxEnabled) return;
+
+        const audio = this.audioCache[soundName];
+        if (audio) {
+            // Clone and play to allow overlapping sounds
+            const clone = audio.cloneNode();
+            clone.volume = this.volume;
+            clone.play().catch(() => { }); // Ignore autoplay errors
+        }
+    },
+
+    // Start background music
+    playMusic() {
+        if (!this.musicEnabled || !this.musicElement) return;
+
+        this.musicElement.play().catch(() => {
+            // Autoplay blocked - will try again on next user interaction
+            console.log('Music autoplay blocked - click to enable');
+        });
+    },
+
+    // Stop background music (fully stops and resets - used for game over, etc.)
+    stopMusic() {
+        if (this.musicElement) {
+            this.musicElement.pause();
+            this.musicElement.currentTime = 0;
+        }
+    },
+
+    // Convenience methods for specific sounds
+    playCardDeal() { this.play('cardDeal'); },
+    playCardFlip() { this.play('cardFlip'); },
+    playChips() { this.play('chips'); },
+    playCheck() { this.play('check'); },
+    playFold() { this.play('fold'); },
+    playWin() { this.play('win'); },
+    playYourTurn() { this.play('yourTurn'); },
+    playAllIn() { this.play('allIn'); }
+};
+
 // Game State
 let gameState = {
     deck: [],
@@ -90,6 +249,7 @@ async function dealHoleCards(thisGameId) {
         const player = gameState.players[playerId];
         player.cards.push(dealCard());
         updatePlayerCardsAnimated(playerId);
+        SoundManager.playCardDeal();
         await delay(200);
     }
 
@@ -101,6 +261,7 @@ async function dealHoleCards(thisGameId) {
         const player = gameState.players[playerId];
         player.cards.push(dealCard());
         updatePlayerCardsAnimated(playerId);
+        SoundManager.playCardDeal();
         await delay(200);
     }
 }
@@ -244,6 +405,8 @@ function updateControls() {
 
     // Toggle disabled state on controls container
     controls.classList.toggle('disabled', !isActive);
+    // Toggle active state for shining effect when player's turn
+    controls.classList.toggle('active', isActive);
 
     const callAmount = gameState.currentBet - player.bet;
     const canCheck = callAmount === 0;
@@ -468,12 +631,14 @@ function playerFold(playerId) {
     const chipsBeforeAction = player.chips;
     player.folded = true;
     showAction(playerId, 'FOLD', chipsBeforeAction);
+    SoundManager.playFold();
     updateUI();
 }
 
 function playerCheck(playerId) {
     const player = gameState.players[playerId];
     showAction(playerId, 'CHECK', player.chips);
+    SoundManager.playCheck();
 }
 
 function playerCall(playerId) {
@@ -489,8 +654,10 @@ function playerCall(playerId) {
     if (player.chips === 0) {
         player.allIn = true;
         showAction(playerId, 'ALL IN', chipsBeforeAction);
+        SoundManager.playAllIn();
     } else {
         showAction(playerId, `CALL $${callAmount}`, chipsBeforeAction);
+        SoundManager.playChips();
     }
 
     updateUI();
@@ -512,8 +679,10 @@ function playerRaise(playerId, totalBet) {
     if (player.chips === 0) {
         player.allIn = true;
         showAction(playerId, 'ALL IN', chipsBeforeAction);
+        SoundManager.playAllIn();
     } else {
         showAction(playerId, `RAISE $${totalBet}`, chipsBeforeAction);
+        SoundManager.playChips();
     }
 
     updateUI();
@@ -537,6 +706,7 @@ function playerAllIn(playerId) {
     gameState.pot += allInAmount;
 
     showAction(playerId, 'ALL IN', chipsBeforeAction);
+    SoundManager.playAllIn();
     updateUI();
 }
 
@@ -782,6 +952,8 @@ async function runBettingRound() {
                 if (currentGameId !== thisGameId) return;
                 aiDecision(player.id);
             } else {
+                // Play notification sound for human player's turn
+                SoundManager.playYourTurn();
                 updateUI();
                 await waitForPlayerAction();
                 // Check again after await in case game was cancelled during wait
@@ -843,6 +1015,7 @@ function resolvePlayerAction() {
         // Immediately disable controls after user takes action
         const controls = document.getElementById('controls');
         controls.classList.add('disabled');
+        controls.classList.remove('active');
 
         playerActionResolver();
         playerActionResolver = null;
@@ -853,6 +1026,9 @@ function resolvePlayerAction() {
 async function startNewGame(randomizeDealer = false) {
     // Increment game ID to cancel any previous game's async operations
     currentGameId++;
+
+    // Start background music (only plays if user has enabled it)
+    SoundManager.playMusic();
 
     // Clear any pending player action resolver from previous game
     if (playerActionResolver) {
@@ -1037,6 +1213,7 @@ async function dealFlop(thisGameId) {
     gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
 
     updateUI();
+    SoundManager.playCardFlip();
 
     await delay(500);
 
@@ -1060,6 +1237,7 @@ async function dealTurn(thisGameId) {
     gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
 
     updateUI();
+    SoundManager.playCardFlip();
 
     await delay(500);
 
@@ -1083,6 +1261,7 @@ async function dealRiver(thisGameId) {
     gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
 
     updateUI();
+    SoundManager.playCardFlip();
 
     await delay(500);
 
@@ -1117,6 +1296,9 @@ async function showdown(thisGameId) {
         // Everyone folded - highlight winner and their hole cards
         const winner = playersInHand[0];
         const winAmount = gameState.pot;
+
+        // Play win sound
+        SoundManager.playWin();
 
         // Reveal winner's cards
         updatePlayerCards(winner.id, false);
@@ -1379,6 +1561,9 @@ async function finalizeShowdown() {
 
 // Highlight winning players and their winning cards
 function highlightWinners(winners) {
+    // Play win sound
+    SoundManager.playWin();
+
     for (const winner of winners) {
         const playerEl = document.getElementById(`player-${winner.id}`);
         playerEl.classList.add('winner');
@@ -1712,6 +1897,6 @@ document.getElementById('btn-return-hand').addEventListener('click', returnToCur
 
 // Initialize
 initPlayers();
+SoundManager.init();
 updateUI();
 showMessage('Click "New Game" to start playing Texas Hold\'em!');
-

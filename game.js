@@ -27,6 +27,7 @@ let gameState = {
 let handNumber = 0; // Current hand number
 let handHistories = []; // Array to store history for each hand
 let currentViewingHand = 0; // Which hand history we're currently viewing
+let currentGameId = 0; // Game ID to track and cancel previous games
 
 // Initialize Players
 function initPlayers() {
@@ -78,11 +79,14 @@ function getDealingOrder() {
 }
 
 // Deal hole cards with animation (async)
-async function dealHoleCards() {
+async function dealHoleCards(thisGameId) {
     const dealingOrder = getDealingOrder();
 
     // Deal first card to each player
     for (const playerId of dealingOrder) {
+        // Check if game was cancelled
+        if (currentGameId !== thisGameId) return;
+
         const player = gameState.players[playerId];
         player.cards.push(dealCard());
         updatePlayerCardsAnimated(playerId);
@@ -91,6 +95,9 @@ async function dealHoleCards() {
 
     // Deal second card to each player
     for (const playerId of dealingOrder) {
+        // Check if game was cancelled
+        if (currentGameId !== thisGameId) return;
+
         const player = gameState.players[playerId];
         player.cards.push(dealCard());
         updatePlayerCardsAnimated(playerId);
@@ -726,6 +733,9 @@ async function resetBets() {
 }
 
 async function runBettingRound() {
+    // Store the game ID at the very start - if it changes, abort this round
+    const thisGameId = currentGameId;
+
     // Get players who can still act (not folded, not all-in, have chips)
     const getActingPlayers = () => gameState.players.filter(p => !p.folded && !p.allIn && p.chips > 0);
 
@@ -744,6 +754,11 @@ async function runBettingRound() {
     let playersActedSinceLastRaise = new Set();
 
     while (true) {
+        // Check if a new game started - if so, abort this betting round
+        if (currentGameId !== thisGameId) {
+            return;
+        }
+
         const player = gameState.players[gameState.currentPlayerIndex];
 
         // If only one player remains in hand (not folded), end the round
@@ -757,10 +772,14 @@ async function runBettingRound() {
 
             if (player.isAI) {
                 await delay(800);
+                // Check again after await in case game was cancelled during delay
+                if (currentGameId !== thisGameId) return;
                 aiDecision(player.id);
             } else {
                 updateUI();
                 await waitForPlayerAction();
+                // Check again after await in case game was cancelled during wait
+                if (currentGameId !== thisGameId) return;
             }
 
             // Mark this player as having acted
@@ -819,6 +838,15 @@ function resolvePlayerAction() {
 
 // Game Phases
 async function startNewGame(randomizeDealer = false) {
+    // Increment game ID to cancel any previous game's async operations
+    currentGameId++;
+
+    // Clear any pending player action resolver from previous game
+    if (playerActionResolver) {
+        playerActionResolver(); // Resolve it to unblock, but the game ID check will abort the old game
+        playerActionResolver = null;
+    }
+
     // Increment hand counter (previous hand's history is already saved in array)
     handNumber++;
     currentViewingHand = handNumber;
@@ -836,6 +864,7 @@ async function startNewGame(randomizeDealer = false) {
     const panelHandNumber = document.getElementById('panel-hand-number');
     if (panelHandNumber) {
         panelHandNumber.textContent = `Hand #${handNumber}`;
+        panelHandNumber.classList.remove('viewing-past');
     }
 
     // Update navigation buttons
@@ -856,6 +885,7 @@ async function startNewGame(randomizeDealer = false) {
     gameState.currentBet = 0;
     gameState.phase = 'preflop';
     gameState.minRaise = BIG_BLIND;
+    gameState.currentPlayerIndex = 0; // Explicitly reset - will be set properly after blinds
 
     // Reset players
     for (const player of gameState.players) {
@@ -910,23 +940,41 @@ async function startNewGame(randomizeDealer = false) {
     // Update UI before dealing to show blinds
     updateUI();
 
+    // Store game ID at the start of this game
+    const thisGameId = currentGameId;
+
     // Deal hole cards with animation
-    await dealHoleCards();
+    await dealHoleCards(thisGameId);
+
+    // Check if game was cancelled
+    if (currentGameId !== thisGameId) return;
 
     // Run betting rounds
     await runBettingRound();
+
+    // Check if game was cancelled
+    if (currentGameId !== thisGameId) return;
 
     if (getPlayersInHand().length > 1) {
         await dealFlop();
     }
 
+    // Check if game was cancelled
+    if (currentGameId !== thisGameId) return;
+
     if (getPlayersInHand().length > 1) {
         await dealTurn();
     }
 
+    // Check if game was cancelled
+    if (currentGameId !== thisGameId) return;
+
     if (getPlayersInHand().length > 1) {
         await dealRiver();
     }
+
+    // Check if game was cancelled
+    if (currentGameId !== thisGameId) return;
 
     await showdown();
 }
@@ -1113,7 +1161,7 @@ async function showdown() {
         logShowdownDetails(playersInHand, allWinners, firstHandName, totalWinAmounts);
 
         // Highlight all winners
-        highlightWinners(allWinners, firstHandName);
+        highlightWinners(allWinners);
 
         // Animate pot to all winners (simplified - just show total)
         await animatePotToWinners(allWinners, allWinners.map(w => totalWinAmounts[w.id]));
@@ -1266,6 +1314,9 @@ function logShowdownDetails(playersInHand, winners, handName, totalWinAmounts) {
 
 // Update chips display only after showdown (called within showdown)
 async function finalizeShowdown() {
+    // Store game ID to check if user started a new game during the delay
+    const thisGameId = currentGameId;
+
     // Update chips display only (don't call updateUI which would rebuild cards and remove highlights)
     for (const player of gameState.players) {
         document.getElementById(`chips-${player.id}`).textContent = player.chips;
@@ -1273,19 +1324,23 @@ async function finalizeShowdown() {
 
     // Wait 5 seconds to let player see the winner highlights, then start next game
     await delay(5000);
-    startNewGame();
+
+    // Only start next game if user didn't already click New Game
+    if (currentGameId === thisGameId) {
+        startNewGame();
+    }
 }
 
 // Highlight winning players and their winning cards
-function highlightWinners(winners, handName) {
+function highlightWinners(winners) {
     for (const winner of winners) {
         const playerEl = document.getElementById(`player-${winner.id}`);
         playerEl.classList.add('winner');
 
-        // Add hand rank badge
+        // Add hand rank badge - use each winner's own hand result name
         const badge = document.createElement('div');
         badge.className = 'hand-rank-badge';
-        badge.textContent = handName;
+        badge.textContent = winner.handResult ? winner.handResult.name : 'Winner';
         badge.id = `hand-badge-${winner.id}`;
         playerEl.appendChild(badge);
 
@@ -1445,15 +1500,49 @@ document.getElementById('raise-slider').addEventListener('input', (e) => {
 });
 
 // Helper for reset and start new game
+let lastNewGameClickTime = 0;
+const NEW_GAME_DEBOUNCE_MS = 3000; // 3 seconds cooldown (card dealing ~1.6s + first AI action ~0.8s + buffer)
+
 function resetAndStartNewGame() {
+    // Debounce: prevent double-clicking within cooldown period
+    const now = Date.now();
+    if (now - lastNewGameClickTime < NEW_GAME_DEBOUNCE_MS) {
+        return; // Ignore rapid clicks
+    }
+    lastNewGameClickTime = now;
+
+    // Add cooldown visual style to button
+    const newGameBtn = document.getElementById('btn-new-game');
+    if (newGameBtn) {
+        newGameBtn.classList.add('cooldown');
+        setTimeout(() => {
+            newGameBtn.classList.remove('cooldown');
+        }, NEW_GAME_DEBOUNCE_MS);
+    }
+
     document.getElementById('winner-popup').classList.remove('visible');
     for (const player of gameState.players) {
         player.chips = STARTING_CHIPS;
     }
-    // Reset hand counter and clear all history
+
+    // Reset hand counter and clear all history IMMEDIATELY
     handNumber = 0;
     handHistories = [];
     currentViewingHand = 0;
+
+    // Clear action history display immediately to prevent old actions from appearing
+    const history = document.getElementById('action-history');
+    if (history) {
+        history.innerHTML = '';
+    }
+
+    // Clear panel hand number display
+    const panelHandNumber = document.getElementById('panel-hand-number');
+    if (panelHandNumber) {
+        panelHandNumber.textContent = '';
+        panelHandNumber.classList.remove('viewing-past');
+    }
+
     startNewGame(true);
 }
 

@@ -588,6 +588,12 @@ body {
     margin-top: 0;
 }
 
+.btn-new-game.cooldown {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .raise-controls {
     display: flex;
     align-items: center;

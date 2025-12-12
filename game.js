@@ -716,9 +716,15 @@ async function animateBetsToPot() {
     }
 }
 
-async function resetBets() {
+async function resetBets(thisGameId) {
+    // Check if game was cancelled before proceeding
+    if (thisGameId !== undefined && currentGameId !== thisGameId) return;
+
     // Animate bets moving to pot first
     await animateBetsToPot();
+
+    // Check again after animation in case game was cancelled
+    if (thisGameId !== undefined && currentGameId !== thisGameId) return;
 
     for (const player of gameState.players) {
         player.bet = 0;
@@ -792,8 +798,15 @@ async function runBettingRound() {
             }
         }
 
+        // Check gameId AGAIN before calling nextPlayer - critical to prevent
+        // old game's loop from modifying new game's currentPlayerIndex
+        if (currentGameId !== thisGameId) return;
+
         // Move to next player
         if (!nextPlayer()) break;
+
+        // Check gameId again after nextPlayer in case game was cancelled
+        if (currentGameId !== thisGameId) return;
 
         // Check if round is complete:
         // All active players have acted since last raise AND all bets are matched
@@ -956,27 +969,27 @@ async function startNewGame(randomizeDealer = false) {
     if (currentGameId !== thisGameId) return;
 
     if (getPlayersInHand().length > 1) {
-        await dealFlop();
+        await dealFlop(thisGameId);
     }
 
     // Check if game was cancelled
     if (currentGameId !== thisGameId) return;
 
     if (getPlayersInHand().length > 1) {
-        await dealTurn();
+        await dealTurn(thisGameId);
     }
 
     // Check if game was cancelled
     if (currentGameId !== thisGameId) return;
 
     if (getPlayersInHand().length > 1) {
-        await dealRiver();
+        await dealRiver(thisGameId);
     }
 
     // Check if game was cancelled
     if (currentGameId !== thisGameId) return;
 
-    await showdown();
+    await showdown(thisGameId);
 }
 
 function getNextActivePlayer(fromIndex) {
@@ -1008,9 +1021,9 @@ function postBlind(playerIndex, amount) {
     showAction(playerIndex, amount === SMALL_BLIND ? 'SB' : 'BB', chipsBeforeAction);
 }
 
-async function dealFlop() {
+async function dealFlop(thisGameId) {
     gameState.phase = 'flop';
-    await resetBets();
+    await resetBets(thisGameId);
 
     // Burn and deal 3 cards
     dealCard(); // Burn
@@ -1026,9 +1039,9 @@ async function dealFlop() {
     await runBettingRound();
 }
 
-async function dealTurn() {
+async function dealTurn(thisGameId) {
     gameState.phase = 'turn';
-    await resetBets();
+    await resetBets(thisGameId);
 
     // Burn and deal 1 card
     dealCard(); // Burn
@@ -1042,9 +1055,9 @@ async function dealTurn() {
     await runBettingRound();
 }
 
-async function dealRiver() {
+async function dealRiver(thisGameId) {
     gameState.phase = 'river';
-    await resetBets();
+    await resetBets(thisGameId);
 
     // Burn and deal 1 card
     dealCard(); // Burn
@@ -1058,11 +1071,11 @@ async function dealRiver() {
     await runBettingRound();
 }
 
-async function showdown() {
+async function showdown(thisGameId) {
     gameState.phase = 'showdown';
 
     // Animate final bets to pot before showdown
-    await resetBets();
+    await resetBets(thisGameId);
 
     const playersInHand = getPlayersInHand();
 

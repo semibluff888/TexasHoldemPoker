@@ -194,7 +194,8 @@ function initPlayers() {
         { id: 0, name: 'You', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: false, allIn: false },
         { id: 1, name: 'AI Player 1', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false },
         { id: 2, name: 'AI Player 2', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false },
-        { id: 3, name: 'AI Player 3', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false }
+        { id: 3, name: 'AI Player 3', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false },
+        { id: 4, name: 'AI Player 4', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false }
     ];
 }
 
@@ -225,15 +226,16 @@ function dealCard() {
 // Get dealing order (clockwise, starting after dealer, dealer last)
 function getDealingOrder() {
     const order = [];
-    // Clockwise: 0 -> 1 -> 2 -> 3 -> 0
-    let currentIndex = (gameState.dealerIndex + 1) % 4;
-    for (let i = 0; i < 4; i++) {
+    const numPlayers = gameState.players.length;
+    // Clockwise: 0 -> 1 -> 2 -> 3 -> 4 -> 0
+    let currentIndex = (gameState.dealerIndex + 1) % numPlayers;
+    for (let i = 0; i < numPlayers; i++) {
         const player = gameState.players[currentIndex];
         // Include all-in players (chips >= 0) - they still need cards dealt
         if (!player.folded && player.chips >= 0) {
             order.push(currentIndex);
         }
-        currentIndex = (currentIndex + 1) % 4;
+        currentIndex = (currentIndex + 1) % numPlayers;
     }
     return order;
 }
@@ -242,10 +244,16 @@ function getDealingOrder() {
 async function dealHoleCards(thisGameId) {
     const dealingOrder = getDealingOrder();
 
+    // Show dealer animation
+    showDealerAnimation(DEALER_GIF_PREFLOP);
+
     // Deal first card to each player
     for (const playerId of dealingOrder) {
         // Check if game was cancelled
-        if (currentGameId !== thisGameId) return;
+        if (currentGameId !== thisGameId) {
+            hideDealerAnimation();
+            return;
+        }
 
         const player = gameState.players[playerId];
         player.cards.push(dealCard());
@@ -257,7 +265,10 @@ async function dealHoleCards(thisGameId) {
     // Deal second card to each player
     for (const playerId of dealingOrder) {
         // Check if game was cancelled
-        if (currentGameId !== thisGameId) return;
+        if (currentGameId !== thisGameId) {
+            hideDealerAnimation();
+            return;
+        }
 
         const player = gameState.players[playerId];
         player.cards.push(dealCard());
@@ -265,6 +276,9 @@ async function dealHoleCards(thisGameId) {
         SoundManager.playCardDeal();
         await delay(200);
     }
+
+    // Hide dealer animation
+    hideDealerAnimation();
 }
 
 // Card Display
@@ -280,6 +294,32 @@ function getCardHTML(card, isHidden = false, animate = true) {
             <span class="card-suit">${card.suit}</span>
         </div>
     `;
+}
+
+// Animate a card element from dealer gif position to its current position
+function animateCardFromDealer(cardElement) {
+    const dealerGif = document.getElementById('dealer-gif');
+    if (!dealerGif || !cardElement) return;
+
+    // Remove animation class temporarily
+    cardElement.classList.remove('dealing');
+
+    const dealerRect = dealerGif.getBoundingClientRect();
+    const cardRect = cardElement.getBoundingClientRect();
+
+    // Calculate offset from dealer to card destination
+    const offsetX = dealerRect.left + dealerRect.width / 2 - cardRect.left - cardRect.width / 2;
+    const offsetY = dealerRect.top + dealerRect.height / 2 - cardRect.top - cardRect.height / 2;
+
+    // Set CSS custom properties for the animation
+    cardElement.style.setProperty('--deal-start-x', `${offsetX}px`);
+    cardElement.style.setProperty('--deal-start-y', `${offsetY}px`);
+
+    // Force reflow to ensure properties are applied before animation
+    cardElement.offsetHeight;
+
+    // Re-add animation class to trigger animation
+    cardElement.classList.add('dealing');
 }
 
 function updatePlayerCards(playerId, isHidden = false) {
@@ -321,6 +361,12 @@ function updatePlayerCardsAnimated(playerId) {
         }
     }
     cardsContainer.innerHTML = html;
+
+    // Set animation start position from dealer gif
+    const dealingCard = cardsContainer.querySelector('.card.dealing');
+    if (dealingCard) {
+        animateCardFromDealer(dealingCard);
+    }
 }
 
 function updateCommunityCards() {
@@ -342,6 +388,11 @@ function updateCommunityCards() {
     }
 
     container.innerHTML = html;
+
+    // Set animation start position from dealer gif for community cards
+    const dealingCards = container.querySelectorAll('.card.dealing');
+    dealingCards.forEach(card => animateCardFromDealer(card));
+
     // Update the count of displayed cards
     gameState.displayedCommunityCards = gameState.communityCards.length;
 }
@@ -805,18 +856,19 @@ function evaluateAIHand(player) {
 
 // Game Flow
 function nextPlayer() {
+    const numPlayers = gameState.players.length;
     let attempts = 0;
     do {
-        // Clockwise direction: 0 -> 1 -> 2 -> 3 -> 0
-        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % 4;
+        // Clockwise direction: 0 -> 1 -> 2 -> 3 -> 4 -> 0
+        gameState.currentPlayerIndex = (gameState.currentPlayerIndex + 1) % numPlayers;
         attempts++;
     } while (
         (gameState.players[gameState.currentPlayerIndex].folded ||
             gameState.players[gameState.currentPlayerIndex].allIn) &&
-        attempts < 4
+        attempts < numPlayers
     );
 
-    return attempts < 4;
+    return attempts < numPlayers;
 }
 
 function getActivePlayers() {
@@ -904,7 +956,7 @@ async function resetBets(thisGameId) {
     gameState.minRaise = BIG_BLIND;
 
     // Clear all bet displays
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < gameState.players.length; i++) {
         updateBetDisplay(i);
     }
 }
@@ -1001,6 +1053,28 @@ async function runBettingRound() {
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Dealer Animation Control
+const DEALER_GIF_PREFLOP = 'pic/dealing_preflop.gif';
+const DEALER_GIF_FLOP = 'pic/dealing_left.gif';
+const DEALER_GIF_TURN_RIVER = 'pic/dealing_right.gif';
+const DEALER_STATIC_SRC = 'pic/dealing.png';
+
+function showDealerAnimation(gifSrc) {
+    const gif = document.getElementById('dealer-gif');
+    if (gif) {
+        // Start the animated gif with unique query param to force restart
+        gif.src = gifSrc + '?t=' + Date.now();
+    }
+}
+
+function hideDealerAnimation() {
+    const gif = document.getElementById('dealer-gif');
+    if (gif) {
+        // Replace with static image to stop the animation
+        gif.src = DEALER_STATIC_SRC;
+    }
 }
 
 let playerActionResolver = null;
@@ -1113,7 +1187,7 @@ async function startNewGame(randomizeDealer = false) {
     } else {
         // Move dealer clockwise for next round
         do {
-            gameState.dealerIndex = (gameState.dealerIndex + 1) % 4;
+            gameState.dealerIndex = (gameState.dealerIndex + 1) % gameState.players.length;
         } while (gameState.players[gameState.dealerIndex].chips <= 0);
     }
 
@@ -1170,12 +1244,13 @@ async function startNewGame(randomizeDealer = false) {
 }
 
 function getNextActivePlayer(fromIndex) {
-    // Clockwise direction: 0 -> 1 -> 2 -> 3 -> 0
-    let index = (fromIndex + 1) % 4;
+    const numPlayers = gameState.players.length;
+    // Clockwise direction: 0 -> 1 -> 2 -> 3 -> 4 -> 0
+    let index = (fromIndex + 1) % numPlayers;
     let attempts = 0;
     // Skip only folded players - all-in players (chips=0 but allIn=true) are still in the hand
-    while (gameState.players[index].folded && attempts < 4) {
-        index = (index + 1) % 4;
+    while (gameState.players[index].folded && attempts < numPlayers) {
+        index = (index + 1) % numPlayers;
         attempts++;
     }
     return index;
@@ -1205,6 +1280,9 @@ async function dealFlop(thisGameId) {
     // Check if game was cancelled
     if (currentGameId !== thisGameId) return;
 
+    // Show dealer animation
+    showDealerAnimation(DEALER_GIF_FLOP);
+
     // Burn and deal 3 cards
     dealCard(); // Burn
     for (let i = 0; i < 3; i++) {
@@ -1216,7 +1294,11 @@ async function dealFlop(thisGameId) {
     updateUI();
     SoundManager.playCardFlip();
 
-    await delay(500);
+    // Wait for GIF animation to complete one loop
+    await delay(1000);
+
+    // Hide dealer animation
+    hideDealerAnimation();
 
     // Check if game was cancelled after delay
     if (currentGameId !== thisGameId) return;
@@ -1231,6 +1313,9 @@ async function dealTurn(thisGameId) {
     // Check if game was cancelled
     if (currentGameId !== thisGameId) return;
 
+    // Show dealer animation
+    showDealerAnimation(DEALER_GIF_TURN_RIVER);
+
     // Burn and deal 1 card
     dealCard(); // Burn
     gameState.communityCards.push(dealCard());
@@ -1240,7 +1325,11 @@ async function dealTurn(thisGameId) {
     updateUI();
     SoundManager.playCardFlip();
 
-    await delay(500);
+    // Wait for GIF animation to complete one loop
+    await delay(1000);
+
+    // Hide dealer animation
+    hideDealerAnimation();
 
     // Check if game was cancelled after delay
     if (currentGameId !== thisGameId) return;
@@ -1255,6 +1344,9 @@ async function dealRiver(thisGameId) {
     // Check if game was cancelled
     if (currentGameId !== thisGameId) return;
 
+    // Show dealer animation
+    showDealerAnimation(DEALER_GIF_TURN_RIVER);
+
     // Burn and deal 1 card
     dealCard(); // Burn
     gameState.communityCards.push(dealCard());
@@ -1264,7 +1356,11 @@ async function dealRiver(thisGameId) {
     updateUI();
     SoundManager.playCardFlip();
 
-    await delay(500);
+    // Wait for GIF animation to complete one loop
+    await delay(1000);
+
+    // Hide dealer animation
+    hideDealerAnimation();
 
     // Check if game was cancelled after delay
     if (currentGameId !== thisGameId) return;

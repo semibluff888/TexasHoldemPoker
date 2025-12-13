@@ -156,6 +156,23 @@ body {
     border: none;
 }
 
+/* ===== Table Title ===== */
+.table-title {
+    position: absolute;
+    top: 16%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 2.2rem;
+    font-weight: 700;
+    color: rgba(0, 0, 0, 0.35);
+    text-shadow:
+        1px 1px 1px rgba(255, 255, 255, 0.1),
+        -1px -1px 1px rgba(0, 0, 0, 0.3);
+    letter-spacing: 6px;
+    z-index: 5;
+    font-style: italic;
+}
+
 .pot-display {
     display: flex;
     flex-direction: row;
@@ -166,8 +183,8 @@ body {
     border-radius: 12px;
     padding: 6px 16px;
     position: absolute;
-    top: 31%;
-    left: 63%;
+    top: 32%;
+    left: 50%;
     transform: translate(-50%, -50%);
     z-index: 10;
 }
@@ -203,6 +220,21 @@ body {
     /* Force GPU layer to prevent blur from backdrop-filter */
     display: none;
     /* Hidden by default, shown via JS when pot > 0 */
+}
+
+/* ===== Dealer Animation ===== */
+.dealer-animation {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: -10px;
+    height: 80px;
+}
+
+.dealer-animation img {
+    max-height: 80px;
+    width: auto;
+    object-fit: contain;
 }
 
 /* ===== Poker Table ===== */
@@ -246,6 +278,28 @@ body {
     top: 50%;
     right: -80px;
     transform: translateY(-50%);
+}
+
+.player-top-left {
+    top: -40px;
+    left: 15%;
+    transform: translateX(-50%);
+}
+
+.player-top-right {
+    top: -40px;
+    right: 15%;
+    transform: translateX(50%);
+}
+
+.player-bottom-left {
+    bottom: 20px;
+    left: -60px;
+}
+
+.player-bottom-right {
+    bottom: 20px;
+    right: -60px;
 }
 
 .player-bottom {
@@ -486,6 +540,30 @@ body {
     transform: translateY(-50%);
 }
 
+.player-top-left .dealer-chip {
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.player-top-right .dealer-chip {
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.player-bottom-left .dealer-chip {
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.player-bottom-right .dealer-chip {
+    top: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 .player-bottom .dealer-chip {
     top: -25px;
     left: 50%;
@@ -577,6 +655,34 @@ body {
     top: 50%;
     transform: translateY(-50%);
     margin-right: 25px;
+}
+
+.player-top-left .player-bet {
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 25px;
+}
+
+.player-top-right .player-bet {
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 25px;
+}
+
+.player-bottom-left .player-bet {
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 25px;
+}
+
+.player-bottom-right .player-bet {
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-bottom: 25px;
 }
 
 /* ===== Controls ===== */
@@ -1103,6 +1209,34 @@ body {
     margin-right: 10px;
 }
 
+.player-top-left .hand-rank-badge {
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: badgePopCentered 0.5s ease forwards;
+}
+
+.player-top-right .hand-rank-badge {
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: badgePopCentered 0.5s ease forwards;
+}
+
+.player-bottom-left .hand-rank-badge {
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: badgePopCentered 0.5s ease forwards;
+}
+
+.player-bottom-right .hand-rank-badge {
+    bottom: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: badgePopCentered 0.5s ease forwards;
+}
+
 .player-bottom .hand-rank-badge {
     bottom: -30px;
     left: 50%;
@@ -1162,17 +1296,23 @@ body {
 @keyframes dealCard {
     0% {
         opacity: 0;
-        transform: translate(-100px, -100px) rotate(-180deg) scale(0.5);
+        transform: translate(var(--deal-start-x, 0), var(--deal-start-y, -300px)) rotate(-180deg) scale(0.1);
+    }
+
+    20% {
+        opacity: 1;
     }
 
     100% {
         opacity: 1;
-        transform: translate(0, 0) rotate(0) scale(1);
+        transform: translate(0, 0) rotate(0deg) scale(1);
     }
 }
 
 .card.dealing {
-    animation: dealCard 0.4s ease forwards;
+    --deal-start-x: 0;
+    --deal-start-y: -300px;
+    animation: dealCard 0.6s ease-out forwards;
 }
 
 /* ===== Responsive ===== */

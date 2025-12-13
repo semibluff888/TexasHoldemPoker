@@ -122,6 +122,27 @@ body {
     transform: rotate(45deg);
 }
 
+/* Language Toggle Button */
+.btn-language {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 0.8rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    font-family: 'Outfit', sans-serif;
+}
+
+.btn-language:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+}
+
 #volume-slider {
     width: 80px;
     height: 6px;

@@ -9,6 +9,330 @@ const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
 const STARTING_CHIPS = 1000;
 
+// ===== Language System =====
+let currentLanguage = localStorage.getItem('pokerLanguage') || 'en';
+
+const TRANSLATIONS = {
+    en: {
+        // Header & Buttons
+        title: '♠ Texas Hold\'em ♥',
+        newGame: 'NEW GAME',
+        continue: 'Continue',
+
+        // Betting Buttons
+        fold: 'FOLD',
+        check: 'CHECK',
+        call: 'CALL',
+        raise: 'RAISE',
+        allIn: 'ALL IN',
+
+        // Player Names
+        you: 'You',
+        aiPlayer: 'AI Player',
+
+        // Actions
+        actionFold: 'Fold',
+        actionCheck: 'Check',
+        actionCall: 'Call',
+        actionRaise: 'Raise',
+        actionAllIn: 'All-In',
+        actionSmallBlind: 'Small Blind',
+        actionBigBlind: 'Big Blind',
+
+        // Game Messages
+        yourTurn: 'Your turn!',
+        winner: 'Winner!',
+        everyoneFolded: 'Everyone Folded',
+        gameOver: 'Game Over!',
+        wins: 'wins',
+        with: 'with',
+
+        // Hand Rankings
+        royalFlush: 'Royal Flush',
+        straightFlush: 'Straight Flush',
+        fourOfAKind: 'Four of a Kind',
+        fullHouse: 'Full House',
+        flush: 'Flush',
+        straight: 'Straight',
+        threeOfAKind: 'Three of a Kind',
+        twoPair: 'Two Pair',
+        onePair: 'One Pair',
+        highCard: 'High Card',
+
+        // Help Popup
+        helpTitle: '🃏 Poker Hand Rankings',
+        helpSubtitle: 'From highest to lowest:',
+        helpOk: 'OK',
+
+        // Hand Descriptions
+        royalFlushDesc: 'A, K, Q, J, 10 of the same suit',
+        straightFlushDesc: 'Five consecutive cards of the same suit',
+        fourOfAKindDesc: 'Four cards of the same rank',
+        fullHouseDesc: 'Three of a kind plus a pair',
+        flushDesc: 'Five cards of the same suit',
+        straightDesc: 'Five consecutive cards of any suit',
+        threeOfAKindDesc: 'Three cards of the same rank',
+        twoPairDesc: 'Two different pairs',
+        onePairDesc: 'Two cards of the same rank',
+        highCardDesc: 'Highest card when no other hand is made',
+
+        // Side Panel
+        actionHistory: 'Action History',
+        hand: 'Hand',
+        handSuffix: '',
+        of: 'of',
+        previous: '◀ Previous',
+        returnText: 'Return ↩',
+        next: 'Next ▶',
+
+        // Pot
+        pot: 'POT',
+        mainPot: 'Main Pot',
+        sidePot: 'Side Pot',
+
+        // Phases
+        start: 'START',
+        preflop: 'PRE-FLOP',
+        flop: 'FLOP',
+        turn: 'TURN',
+        river: 'RIVER',
+        showdown: 'SHOWDOWN',
+
+        // Table
+        tableTitle: 'SPY×FAMILY'
+    },
+    zh: {
+        // Header & Buttons
+        title: '♠ 德州扑克 ♥',
+        newGame: '新游戏',
+        continue: '继续',
+
+        // Betting Buttons
+        fold: '弃牌',
+        check: '过牌',
+        call: '跟注',
+        raise: '加注',
+        allIn: '全押',
+
+        // Player Names
+        you: '你',
+        aiPlayer: 'AI玩家',
+
+        // Actions
+        actionFold: '弃牌',
+        actionCheck: '过牌',
+        actionCall: '跟注',
+        actionRaise: '加注',
+        actionAllIn: '全押',
+        actionSmallBlind: '小盲注',
+        actionBigBlind: '大盲注',
+
+        // Game Messages
+        yourTurn: '轮到你了！',
+        winner: '赢家！',
+        everyoneFolded: '全员弃牌',
+        gameOver: '游戏结束！',
+        wins: '赢得',
+        with: '凭借',
+
+        // Hand Rankings
+        royalFlush: '皇家同花顺',
+        straightFlush: '同花顺',
+        fourOfAKind: '四条',
+        fullHouse: '葫芦',
+        flush: '同花',
+        straight: '顺子',
+        threeOfAKind: '三条',
+        twoPair: '两对',
+        onePair: '一对',
+        highCard: '高牌',
+
+        // Help Popup
+        helpTitle: '🃏 扑克牌型排名',
+        helpSubtitle: '从高到低：',
+        helpOk: '确定',
+
+        // Hand Descriptions
+        royalFlushDesc: '同花色的 A, K, Q, J, 10',
+        straightFlushDesc: '同花色的五张连续牌',
+        fourOfAKindDesc: '四张相同点数的牌',
+        fullHouseDesc: '三条加一对',
+        flushDesc: '五张同花色的牌',
+        straightDesc: '五张连续的牌（任意花色）',
+        threeOfAKindDesc: '三张相同点数的牌',
+        twoPairDesc: '两个不同的对子',
+        onePairDesc: '两张相同点数的牌',
+        highCardDesc: '没有成牌时的最大单牌',
+
+        // Side Panel
+        actionHistory: '行动记录',
+        hand: '第',
+        handSuffix: '局',
+        of: '共',
+        previous: '◀ 上一局',
+        returnText: '返回 ↩',
+        next: '下一局 ▶',
+
+        // Pot
+        pot: '奖池',
+        mainPot: '主池',
+        sidePot: '边池',
+
+        // Phases
+        start: '开始',
+        preflop: '翻牌前',
+        flop: '翻牌',
+        turn: '转牌',
+        river: '河牌',
+        showdown: '摊牌',
+
+        // Table
+        tableTitle: '间谍过家家'
+    }
+};
+
+// Get translated text
+function t(key) {
+    return TRANSLATIONS[currentLanguage][key] || TRANSLATIONS.en[key] || key;
+}
+
+// Translate hand name (for win badges and messages)
+function translateHandName(englishName) {
+    const handMap = {
+        'Royal Flush': 'royalFlush',
+        'Straight Flush': 'straightFlush',
+        'Four of a Kind': 'fourOfAKind',
+        'Full House': 'fullHouse',
+        'Flush': 'flush',
+        'Straight': 'straight',
+        'Three of a Kind': 'threeOfAKind',
+        'Two Pair': 'twoPair',
+        'One Pair': 'onePair',
+        'High Card': 'highCard',
+        'Everyone Folded': 'everyoneFolded'
+    };
+    const key = handMap[englishName];
+    return key ? t(key) : englishName;
+}
+
+// Switch language
+function toggleLanguage() {
+    currentLanguage = currentLanguage === 'en' ? 'zh' : 'en';
+    localStorage.setItem('pokerLanguage', currentLanguage);
+    updateLanguageUI();
+}
+
+// Update all UI text to current language
+function updateLanguageUI() {
+    // Update language button
+    const langBtn = document.getElementById('btn-language');
+    if (langBtn) {
+        langBtn.textContent = currentLanguage === 'en' ? '中文' : 'EN';
+    }
+
+    // Update title
+    const title = document.querySelector('.game-header h1');
+    if (title) title.textContent = t('title');
+
+    // Update NEW GAME button
+    const newGameBtn = document.getElementById('btn-new-game');
+    if (newGameBtn && !newGameBtn.classList.contains('cooldown')) {
+        newGameBtn.textContent = t('newGame');
+    }
+
+    // Update betting buttons
+    document.getElementById('btn-fold').textContent = t('fold');
+    document.getElementById('btn-check').textContent = t('check');
+    document.getElementById('btn-raise').textContent = t('raise');
+    document.getElementById('btn-allin').textContent = t('allIn');
+
+    // Call button has dynamic amount
+    const callBtn = document.getElementById('btn-call');
+    const callAmount = document.getElementById('call-amount').textContent;
+    callBtn.innerHTML = `${t('call')} $<span id="call-amount">${callAmount}</span>`;
+
+    // Update Continue button
+    const continueBtn = document.getElementById('btn-continue');
+    if (continueBtn) continueBtn.textContent = t('continue');
+
+    // Update pot label
+    const potLabel = document.querySelector('.pot-label');
+    if (potLabel) potLabel.textContent = t('pot');
+
+    // Update action history title
+    const historyTitle = document.querySelector('.panel-header');
+    if (historyTitle) historyTitle.textContent = t('actionHistory');
+
+    // Update table title
+    const tableTitle = document.querySelector('.table-title');
+    if (tableTitle) tableTitle.textContent = t('tableTitle');
+
+    // Update help popup
+    const helpTitle = document.querySelector('.help-content h2');
+    if (helpTitle) helpTitle.textContent = t('helpTitle');
+
+    const helpSubtitle = document.querySelector('.help-subtitle');
+    if (helpSubtitle) helpSubtitle.textContent = t('helpSubtitle');
+
+    const helpOkBtn = document.getElementById('btn-help-ok');
+    if (helpOkBtn) helpOkBtn.textContent = t('helpOk');
+
+    // Update help popup hand rankings table
+    const handNames = document.querySelectorAll('.hand-rankings-table .hand-name');
+    const handDescs = document.querySelectorAll('.hand-rankings-table .hand-desc');
+    const handKeys = ['royalFlush', 'straightFlush', 'fourOfAKind', 'fullHouse', 'flush', 'straight', 'threeOfAKind', 'twoPair', 'onePair', 'highCard'];
+
+    handNames.forEach((el, i) => {
+        if (handKeys[i]) el.textContent = t(handKeys[i]);
+    });
+    handDescs.forEach((el, i) => {
+        if (handKeys[i]) el.textContent = t(handKeys[i] + 'Desc');
+    });
+
+    // Update player names
+    for (let i = 0; i < gameState.players.length; i++) {
+        const nameEl = document.querySelector(`#player-${i} .player-name`);
+        if (nameEl) {
+            nameEl.textContent = i === 0 ? t('you') : `${t('aiPlayer')} ${i}`;
+        }
+    }
+
+    // Update action history navigation buttons
+    const btnPrev = document.getElementById('btn-prev-hand');
+    const btnReturn = document.getElementById('btn-return-hand');
+    const btnNext = document.getElementById('btn-next-hand');
+    if (btnPrev) btnPrev.textContent = t('previous');
+    if (btnReturn) btnReturn.textContent = t('returnText');
+    if (btnNext) btnNext.textContent = t('next');
+
+    // Update hand number display
+    updateHandNumberDisplay();
+}
+
+// Update hand number display with translation
+function updateHandNumberDisplay() {
+    const panelHandNumber = document.getElementById('panel-hand-number');
+    if (panelHandNumber && handNumber > 0) {
+        if (currentViewingHand === handNumber) {
+            // Viewing current hand: "Hand #X" or "第X局"
+            if (currentLanguage === 'zh') {
+                panelHandNumber.textContent = `${t('hand')}${handNumber}${t('handSuffix') || ''}`;
+            } else {
+                panelHandNumber.textContent = `${t('hand')} #${handNumber}`;
+            }
+            panelHandNumber.classList.remove('viewing-past');
+        } else {
+            // Viewing past hand: "Hand #X of Y" or "第X局 / 共Y局"
+            if (currentLanguage === 'zh') {
+                panelHandNumber.textContent = `${t('hand')}${currentViewingHand}${t('handSuffix') || ''} / ${t('of')}${handNumber}${t('handSuffix') || ''}`;
+            } else {
+                panelHandNumber.textContent = `${t('hand')} #${currentViewingHand} ${t('of')} ${handNumber}`;
+            }
+            panelHandNumber.classList.add('viewing-past');
+        }
+    }
+}
+
 // ===== Sound Manager =====
 const SoundManager = {
     // Sound URLs from free sources (Mixkit - royalty-free)
@@ -515,7 +839,7 @@ function showAction(playerId, action, chipsBeforeAction = null) {
 
     // Log the action with player's chip amount before the action
     const player = gameState.players[playerId];
-    const name = playerId === 0 ? 'You' : player.name;
+    const name = playerId === 0 ? t('you') : `${t('aiPlayer')} ${playerId}`;
     // Use provided chipsBeforeAction, or fallback to current chips (for fold/check)
     const chipAmount = chipsBeforeAction !== null ? chipsBeforeAction : player.chips;
     showMessage(`${name}($${chipAmount}): ${action}`);
@@ -547,7 +871,10 @@ function showMessage(message) {
 
     const now = new Date();
     const time = now.toLocaleTimeString('en-US', { hour12: false, hour: "numeric", minute: "numeric", second: "numeric" });
-    const phase = (gameState.phase === 'idle' ? 'Start' : gameState.phase).toUpperCase();
+
+    // Translate phase name
+    const phaseKey = gameState.phase === 'idle' ? 'start' : gameState.phase;
+    const phase = t(phaseKey) || phaseKey.toUpperCase();
 
     const entryHTML = `
         <div class="log-entry">
@@ -698,14 +1025,14 @@ function playerFold(playerId) {
     const player = gameState.players[playerId];
     const chipsBeforeAction = player.chips;
     player.folded = true;
-    showAction(playerId, 'FOLD', chipsBeforeAction);
+    showAction(playerId, t('actionFold'), chipsBeforeAction);
     SoundManager.playFold();
     updateUI();
 }
 
 function playerCheck(playerId) {
     const player = gameState.players[playerId];
-    showAction(playerId, 'CHECK', player.chips);
+    showAction(playerId, t('actionCheck'), player.chips);
     SoundManager.playCheck();
 }
 
@@ -721,10 +1048,10 @@ function playerCall(playerId) {
 
     if (player.chips === 0) {
         player.allIn = true;
-        showAction(playerId, 'ALL IN', chipsBeforeAction);
+        showAction(playerId, t('actionAllIn'), chipsBeforeAction);
         SoundManager.playAllIn();
     } else {
-        showAction(playerId, `CALL $${callAmount}`, chipsBeforeAction);
+        showAction(playerId, `${t('actionCall')} $${callAmount}`, chipsBeforeAction);
         SoundManager.playChips();
     }
 
@@ -746,10 +1073,10 @@ function playerRaise(playerId, totalBet) {
 
     if (player.chips === 0) {
         player.allIn = true;
-        showAction(playerId, 'ALL IN', chipsBeforeAction);
+        showAction(playerId, t('actionAllIn'), chipsBeforeAction);
         SoundManager.playAllIn();
     } else {
-        showAction(playerId, `RAISE $${totalBet}`, chipsBeforeAction);
+        showAction(playerId, `${t('actionRaise')} $${totalBet}`, chipsBeforeAction);
         SoundManager.playChips();
     }
 
@@ -773,7 +1100,7 @@ function playerAllIn(playerId) {
     player.allIn = true;
     gameState.pot += allInAmount;
 
-    showAction(playerId, 'ALL IN', chipsBeforeAction);
+    showAction(playerId, t('actionAllIn'), chipsBeforeAction);
     SoundManager.playAllIn();
     updateUI();
 }
@@ -1151,11 +1478,7 @@ async function startNewGame(randomizeDealer = false) {
     }
 
     // Update hand number in panel header (stays visible when scrolling)
-    const panelHandNumber = document.getElementById('panel-hand-number');
-    if (panelHandNumber) {
-        panelHandNumber.textContent = `Hand #${handNumber}`;
-        panelHandNumber.classList.remove('viewing-past');
-    }
+    updateHandNumberDisplay();
 
     // Update navigation buttons
     updateHistoryNavigation();
@@ -1296,7 +1619,7 @@ function postBlind(playerIndex, amount) {
         player.allIn = true;
     }
 
-    showAction(playerIndex, amount === SMALL_BLIND ? 'SB' : 'BB', chipsBeforeAction);
+    showAction(playerIndex, amount === SMALL_BLIND ? t('actionSmallBlind') : t('actionBigBlind'), chipsBeforeAction);
 }
 
 async function dealFlop(thisGameId) {
@@ -1691,10 +2014,10 @@ function highlightWinners(winners) {
         const playerEl = document.getElementById(`player-${winner.id}`);
         playerEl.classList.add('winner');
 
-        // Add hand rank badge - use each winner's own hand result name
+        // Add hand rank badge - use each winner's own hand result name (translated)
         const badge = document.createElement('div');
         badge.className = 'hand-rank-badge';
-        badge.textContent = winner.handResult ? winner.handResult.name : 'Winner';
+        badge.textContent = winner.handResult ? translateHandName(winner.handResult.name) : t('winner');
         badge.id = `hand-badge-${winner.id}`;
         playerEl.appendChild(badge);
 
@@ -1873,7 +2196,7 @@ function resetAndStartNewGame() {
 
         // Start countdown timer
         let secondsRemaining = Math.ceil(NEW_GAME_DEBOUNCE_MS / 1000);
-        newGameBtn.textContent = `NEW GAME (${secondsRemaining})`;
+        newGameBtn.textContent = `${t('newGame')} (${secondsRemaining})`;
 
         // Clear any existing interval
         if (cooldownIntervalId) {
@@ -1883,10 +2206,10 @@ function resetAndStartNewGame() {
         cooldownIntervalId = setInterval(() => {
             secondsRemaining--;
             if (secondsRemaining > 0) {
-                newGameBtn.textContent = `NEW GAME (${secondsRemaining})`;
+                newGameBtn.textContent = `${t('newGame')} (${secondsRemaining})`;
             } else {
                 // Cooldown finished
-                newGameBtn.textContent = 'NEW GAME';
+                newGameBtn.textContent = t('newGame');
                 newGameBtn.classList.remove('cooldown');
                 clearInterval(cooldownIntervalId);
                 cooldownIntervalId = null;
@@ -1968,17 +2291,8 @@ function navigateToHand(direction) {
         history.innerHTML = '';
     }
 
-    // Update hand number in panel header
-    const panelHandNumber = document.getElementById('panel-hand-number');
-    if (panelHandNumber) {
-        if (currentViewingHand === handNumber) {
-            panelHandNumber.textContent = `Hand #${handNumber}`;
-            panelHandNumber.classList.remove('viewing-past');
-        } else {
-            panelHandNumber.textContent = `Hand #${currentViewingHand} of ${handNumber}`;
-            panelHandNumber.classList.add('viewing-past');
-        }
-    }
+    // Update hand number display with translation
+    updateHandNumberDisplay();
 
     // Update navigation buttons
     updateHistoryNavigation();
@@ -2005,12 +2319,8 @@ function returnToCurrentHand() {
         history.innerHTML = '';
     }
 
-    // Update hand number in panel header
-    const panelHandNumber = document.getElementById('panel-hand-number');
-    if (panelHandNumber) {
-        panelHandNumber.textContent = `Hand #${handNumber}`;
-        panelHandNumber.classList.remove('viewing-past');
-    }
+    // Update hand number display with translation
+    updateHandNumberDisplay();
 
     // Update navigation buttons
     updateHistoryNavigation();
@@ -2035,8 +2345,13 @@ document.getElementById('help-popup').addEventListener('click', (e) => {
     }
 });
 
+// ===== Language Toggle =====
+document.getElementById('btn-language').addEventListener('click', toggleLanguage);
+
 // Initialize
 initPlayers();
 SoundManager.init();
 updateUI();
+updateLanguageUI(); // Apply saved language preference
 showMessage('Click "New Game" to start playing Texas Hold\'em!');
+

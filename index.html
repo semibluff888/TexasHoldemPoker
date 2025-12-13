@@ -10,6 +10,9 @@
 </head>
 
 <body>
+    <!-- Cursor Trail Effect -->
+    <div class="cursor-trail-container" id="cursor-trail"></div>
+
     <div class="game-container">
         <!-- Game Header -->
         <header class="game-header">
@@ -19,6 +22,12 @@
                 <button class="btn-sound" id="btn-music" title="Toggle Music">🎵</button>
                 <button class="btn-sound" id="btn-sfx" title="Toggle Sound Effects">🔊</button>
                 <input type="range" id="volume-slider" min="0" max="100" value="50" title="Volume">
+                <select class="cursor-select" id="cursor-select" title="Cursor Effect">
+                    <option value="sparkle">✨ Sparkle</option>
+                    <option value="comet">☄️ Comet</option>
+                    <option value="bubble">🔮 Bubble</option>
+                    <option value="none">❌ None</option>
+                </select>
                 <button class="btn-language" id="btn-language" title="Toggle Language">中文</button>
             </div>
             <button class="btn btn-new-game" id="btn-new-game">NEW GAME</button>

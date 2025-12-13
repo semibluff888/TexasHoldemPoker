@@ -1,17 +1,23 @@
 # ♠ Texas Hold'em Poker ♥
 
-A browser-based Texas Hold'em Poker game featuring an elegant UI with smooth animations and intelligent AI opponents.
+A browser-based Texas Hold'em Poker game featuring an elegant SPY×FAMILY themed UI with smooth animations, intelligent AI opponents, and bilingual support (English/Chinese).
+
+![Game Screenshot](pic/screenshot.png)
 
 ## 🎮 Features
 
 - **Full Texas Hold'em Gameplay**: Complete implementation of Texas Hold'em rules including all betting rounds (Pre-flop, Flop, Turn, River)
-- **AI Opponents**: Three AI players with strategic decision-making based on hand strength and game dynamics
+- **4 AI Opponents**: Strategic AI players with SPY×FAMILY character portraits that randomize each game
 - **Beautiful User Interface**: Modern design with:
-  - Smooth card dealing animations
-  - Professional poker table layout
-  - Real-time action history tracking
+  - Smooth card dealing animations with dealer GIF
+  - Professional poker table layout with SPY×FAMILY theme
+  - Real-time action history tracking with hand navigation
   - Interactive betting controls with slider
   - Glassmorphism effects and vibrant gradients
+  - Winner celebration animations
+- **Sound & Music**: Background music and sound effects for dealing, betting, folding, and winning
+- **Bilingual Support**: Full English and Chinese language support with automatic browser detection
+- **Cursor Effects**: Choose from Sparkle, Comet, or Bubble cursor trail effects
 - **Complete Hand Evaluation**: Accurate poker hand ranking system supporting all hand types from High Card to Royal Flush
 - **Responsive Controls**: Intuitive betting interface with Fold, Check, Call, Raise, and All-In options
 - **Game State Management**: Proper dealer button rotation, blind posting, and turn-based gameplay
@@ -22,7 +28,7 @@ A browser-based Texas Hold'em Poker game featuring an elegant UI with smooth ani
 Win chips by having the best five-card poker hand or by making other players fold.
 
 ### Gameplay Flow
-1. **Blinds**: Small blind ($5) and big blind ($10) are posted automatically
+1. **Blinds**: Small blind ($10) and big blind ($20) are posted automatically
 2. **Pre-flop**: Each player receives 2 hole cards
 3. **Flop**: 3 community cards are revealed
 4. **Turn**: 4th community card is revealed
@@ -65,7 +71,7 @@ From highest to lowest:
 git clone <repository-url>
 
 # Navigate to the project directory
-cd TaxasHoldemPoker
+cd TexasHoldemPoker
 
 # Open index.html in your browser
 # On Windows:
@@ -81,12 +87,17 @@ xdg-open index.html
 ## 📁 Project Structure
 
 ```
-TaxasHoldemPoker/
+TexasHoldemPoker/
 ├── index.html          # Main HTML structure
 ├── styles.css          # All styling and animations
-├── game.js             # Game logic and AI
+├── game.js             # Game logic, AI, and translations
 ├── pic/
-│   └── chip.png        # Poker chip image
+│   ├── chip.png        # Poker chip image
+│   ├── dealing*.gif    # Dealer animations
+│   ├── user_win.gif    # Win celebration animation
+│   ├── portrait/       # AI player character portraits
+│   └── screenshot.png  # Game screenshot
+├── audio/              # Sound effects and music
 └── README.md           # This file
 ```
 
@@ -97,12 +108,14 @@ TaxasHoldemPoker/
 - **CSS3**: Modern styling with animations, gradients, and glassmorphism effects
 - **Vanilla JavaScript**: Pure JS implementation with no dependencies
 - **Google Fonts**: Outfit font family for clean typography
+- **Web Audio API**: Sound effects and background music
 
 ### Key Features in Code
 - **Async/Await Pattern**: Smooth, sequential animations for card dealing
 - **Hand Evaluation Algorithm**: Comprehensive poker hand ranking with tie-breaking
 - **AI Decision Making**: Dynamic AI with hand strength evaluation and betting strategy
 - **State Management**: Robust game state tracking across all betting phases
+- **Internationalization**: Full translation system with bilingual support
 - **Responsive Design**: Adapts to different screen sizes
 
 ## 🎲 How to Play
@@ -113,7 +126,9 @@ TaxasHoldemPoker/
 4. **Raise Control**: Use the slider to adjust your raise amount
 5. **Watch AI Players**: AI opponents will make their decisions automatically
 6. **View Results**: At showdown, the winner will be announced with their winning hand
-7. **Continue Playing**: Click "Continue" to start the next round
+7. **Continue Playing**: The next hand starts automatically after each round
+8. **Language Toggle**: Click the language button (中文/EN) to switch languages
+9. **Sound Controls**: Use the music and sound effect buttons in the header
 
 ## 🤖 AI Behavior
 
@@ -128,20 +143,9 @@ The AI opponents use a strategy-based decision-making system:
 
 Default settings (can be modified in `game.js`):
 - **Starting Chips**: $1000 per player
-- **Small Blind**: $5
-- **Big Blind**: $10
-- **Number of Players**: 4 (1 human + 3 AI)
-
-## 🎯 Future Enhancements
-
-Potential features for future development:
-- Tournament mode
-- Multiplayer support
-- Sound effects and background music
-- Player statistics tracking
-- Customizable avatars
-- Different difficulty levels for AI
-- Mobile touch controls optimization
+- **Small Blind**: $10
+- **Big Blind**: $20
+- **Number of Players**: 5 (1 human + 4 AI)
 
 ## 📝 License
 
@@ -151,6 +155,7 @@ This project is open source and available for personal and educational use.
 
 - Card suits and poker hand rankings based on standard Texas Hold'em rules
 - UI design inspired by modern poker applications
+- Character portraits from SPY×FAMILY anime
 - Built with passion for poker and clean code
 
 ---

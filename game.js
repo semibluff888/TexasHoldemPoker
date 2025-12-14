@@ -9,6 +9,12 @@ const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
 const STARTING_CHIPS = 1000;
 
+// ===== Game Mode Settings =====
+const COUNTDOWN_DURATION = 10000; // 10 seconds for fast mode
+let gameMode = localStorage.getItem('pokerGameMode') || 'fast'; // 'fast' or 'slow'
+let countdownTimerId = null;
+let countdownStartTime = null;
+
 // ===== Language System =====
 let currentLanguage = localStorage.getItem('pokerLanguage') || 'en';
 
@@ -124,7 +130,11 @@ const TRANSLATIONS = {
         // Pot Preset Buttons
         halfPot: '1/2 POT',
         onePot: '1 POT',
-        twoPot: '2 POT'
+        twoPot: '2 POT',
+
+        // Game Mode
+        fastMode: 'FAST',
+        slowMode: 'SLOW'
     },
     zh: {
         // Header & Buttons
@@ -238,7 +248,11 @@ const TRANSLATIONS = {
         // Pot Preset Buttons
         halfPot: '半池',
         onePot: '1倍底池',
-        twoPot: '2倍底池'
+        twoPot: '2倍底池',
+
+        // Game Mode
+        fastMode: '快速',
+        slowMode: '慢速'
     }
 };
 
@@ -379,6 +393,9 @@ function updateLanguageUI() {
     if (btnHalfPot) btnHalfPot.textContent = t('halfPot');
     if (btnOnePot) btnOnePot.textContent = t('onePot');
     if (btnTwoPot) btnTwoPot.textContent = t('twoPot');
+
+    // Update game mode button
+    updateGameModeUI();
 
     // Update hand number display
     updateHandNumberDisplay();
@@ -829,10 +846,14 @@ function updateUI() {
 
         const playerEl = document.getElementById(`player-${player.id}`);
         playerEl.classList.toggle('folded', player.folded);
-        // Only show active state when game is in progress (not idle)
+        // Only show active state when game is in progress (not idle) and player can act
         const isActivePlayer = gameState.phase !== 'idle' &&
-            gameState.currentPlayerIndex === player.id && !player.folded;
+            gameState.currentPlayerIndex === player.id &&
+            !player.folded && !player.allIn;
         playerEl.classList.toggle('active', isActivePlayer);
+        // Add game mode class for styling (fast-mode or slow-mode)
+        playerEl.classList.toggle('fast-mode', gameMode === 'fast');
+        playerEl.classList.toggle('slow-mode', gameMode === 'slow');
 
         // Update dealer chip
         const dealerChip = document.getElementById(`dealer-${player.id}`);
@@ -1505,6 +1526,8 @@ async function runBettingRound() {
                 // Play notification sound for human player's turn
                 SoundManager.playYourTurn();
                 updateUI();
+                // Start countdown timer in fast mode
+                startCountdown();
                 await waitForPlayerAction();
                 // Check again after await in case game was cancelled during wait
                 if (currentGameId !== thisGameId) return;
@@ -1546,6 +1569,12 @@ async function runBettingRound() {
             break;
         }
     }
+
+    // Clear countdown timer when betting round ends
+    clearCountdown();
+    // Reset currentPlayerIndex so no player is marked as active
+    gameState.currentPlayerIndex = -1;
+    updateUI(); // Remove active class to stop flowing border animation
 }
 
 function delay(ms) {
@@ -1631,6 +1660,9 @@ function waitForPlayerAction() {
 
 function resolvePlayerAction() {
     if (playerActionResolver) {
+        // Clear countdown timer if running
+        clearCountdown();
+
         // Immediately disable controls after user takes action
         const controls = document.getElementById('controls');
         controls.classList.add('disabled');
@@ -1638,6 +1670,57 @@ function resolvePlayerAction() {
 
         playerActionResolver();
         playerActionResolver = null;
+    }
+}
+
+// ===== Countdown Timer for Fast Mode =====
+function startCountdown() {
+    if (gameMode !== 'fast') return;
+
+    clearCountdown(); // Clear any existing timer
+    countdownStartTime = Date.now();
+
+    countdownTimerId = setTimeout(() => {
+        handleCountdownExpired();
+    }, COUNTDOWN_DURATION);
+}
+
+function clearCountdown() {
+    if (countdownTimerId) {
+        clearTimeout(countdownTimerId);
+        countdownTimerId = null;
+    }
+    countdownStartTime = null;
+}
+
+function handleCountdownExpired() {
+    const player = gameState.players[0]; // Human player
+    const callAmount = gameState.currentBet - player.bet;
+
+    if (callAmount > 0) {
+        // Facing a raise - auto fold
+        playerFold(0);
+    } else {
+        // No raise - auto check
+        playerCheck(0);
+    }
+
+    resolvePlayerAction();
+}
+
+// ===== Game Mode Toggle =====
+function toggleGameMode() {
+    gameMode = gameMode === 'fast' ? 'slow' : 'fast';
+    localStorage.setItem('pokerGameMode', gameMode);
+    updateGameModeUI();
+    updateUI(); // Refresh player mode classes
+}
+
+function updateGameModeUI() {
+    const modeBtn = document.getElementById('btn-mode');
+    if (modeBtn) {
+        modeBtn.textContent = gameMode === 'fast' ? t('fastMode') : t('slowMode');
+        modeBtn.classList.toggle('fast-active', gameMode === 'fast');
     }
 }
 
@@ -1695,7 +1778,7 @@ async function startNewGame(randomizeDealer = false) {
     gameState.currentBet = 0;
     gameState.phase = 'preflop';
     gameState.minRaise = BIG_BLIND;
-    gameState.currentPlayerIndex = 0; // Explicitly reset - will be set properly after blinds
+    gameState.currentPlayerIndex = -1; // No active player until blinds are posted
 
     // Reset players
     for (const player of gameState.players) {
@@ -1745,9 +1828,9 @@ async function startNewGame(randomizeDealer = false) {
     postBlind(bbIndex, BIG_BLIND);
 
     gameState.currentBet = BIG_BLIND;
-    gameState.currentPlayerIndex = getNextActivePlayer(bbIndex);
+    // Don't set currentPlayerIndex yet - wait until after dealing
 
-    // Update UI before dealing to show blinds
+    // Update UI before dealing to show blinds (no active player yet)
     updateUI();
 
     // Store game ID at the start of this game
@@ -1758,6 +1841,9 @@ async function startNewGame(randomizeDealer = false) {
 
     // Check if game was cancelled
     if (currentGameId !== thisGameId) return;
+
+    // Now set the active player (after hole cards are dealt)
+    gameState.currentPlayerIndex = getNextActivePlayer(bbIndex);
 
     // Run betting rounds
     await runBettingRound();
@@ -1835,9 +1921,8 @@ async function dealFlop(thisGameId) {
         gameState.communityCards.push(dealCard());
     }
 
-    gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
-
-    updateUI();
+    // Update community cards display (but don't set active player yet)
+    updateCommunityCards();
     SoundManager.playCardFlip();
 
     // Wait for GIF animation to complete one loop
@@ -1848,6 +1933,9 @@ async function dealFlop(thisGameId) {
 
     // Check if game was cancelled after delay
     if (currentGameId !== thisGameId) return;
+
+    // Now set the active player (after animation completes)
+    gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
 
     await runBettingRound();
 }
@@ -1866,9 +1954,8 @@ async function dealTurn(thisGameId) {
     dealCard(); // Burn
     gameState.communityCards.push(dealCard());
 
-    gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
-
-    updateUI();
+    // Update community cards display (but don't set active player yet)
+    updateCommunityCards();
     SoundManager.playCardFlip();
 
     // Wait for GIF animation to complete one loop
@@ -1879,6 +1966,9 @@ async function dealTurn(thisGameId) {
 
     // Check if game was cancelled after delay
     if (currentGameId !== thisGameId) return;
+
+    // Now set the active player (after animation completes)
+    gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
 
     await runBettingRound();
 }
@@ -1897,9 +1987,8 @@ async function dealRiver(thisGameId) {
     dealCard(); // Burn
     gameState.communityCards.push(dealCard());
 
-    gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
-
-    updateUI();
+    // Update community cards display (but don't set active player yet)
+    updateCommunityCards();
     SoundManager.playCardFlip();
 
     // Wait for GIF animation to complete one loop
@@ -1910,6 +1999,9 @@ async function dealRiver(thisGameId) {
 
     // Check if game was cancelled after delay
     if (currentGameId !== thisGameId) return;
+
+    // Now set the active player (after animation completes)
+    gameState.currentPlayerIndex = getNextActivePlayer(gameState.dealerIndex);
 
     await runBettingRound();
 }
@@ -2803,4 +2895,8 @@ SoundManager.init();
 hideGameElements(); // Hide player elements initially
 updateUI();
 updateLanguageUI(); // Apply saved language preference
+updateGameModeUI(); // Apply saved game mode preference
 showMessage(t('startMessage'));
+
+// Mode toggle event listener
+document.getElementById('btn-mode').addEventListener('click', toggleGameMode);

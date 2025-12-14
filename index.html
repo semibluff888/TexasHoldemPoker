@@ -196,8 +196,15 @@
                     <button class="btn btn-check" id="btn-check">CHECK</button>
                     <button class="btn btn-call" id="btn-call">CALL $<span id="call-amount">0</span></button>
                     <div class="raise-controls">
-                        <input type="range" id="raise-slider" min="0" max="1000" value="0">
-                        <span class="raise-amount">$<span id="raise-amount">0</span></span>
+                        <div class="slider-row">
+                            <input type="range" id="raise-slider" min="0" max="1000" value="0">
+                            <span class="raise-amount">$<span id="raise-amount">0</span></span>
+                        </div>
+                        <div class="pot-presets">
+                            <button class="btn btn-pot-preset" id="btn-half-pot">1/2 POT</button>
+                            <button class="btn btn-pot-preset" id="btn-one-pot">1 POT</button>
+                            <button class="btn btn-pot-preset" id="btn-two-pot">2 POT</button>
+                        </div>
                     </div>
                     <button class="btn btn-raise" id="btn-raise">RAISE</button>
                     <button class="btn btn-allin" id="btn-allin">ALL IN</button>

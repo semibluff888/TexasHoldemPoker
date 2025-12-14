@@ -119,7 +119,12 @@ const TRANSLATIONS = {
         startMessage: 'Click "New Game" to start playing Texas Hold\'em!',
         potWinMessage: '{pot}: {winner} wins ${amount} with {hand}',
         // Table
-        tableTitle: 'SPY×FAMILY'
+        tableTitle: 'SPY×FAMILY',
+
+        // Pot Preset Buttons
+        halfPot: '1/2 POT',
+        onePot: '1 POT',
+        twoPot: '2 POT'
     },
     zh: {
         // Header & Buttons
@@ -228,7 +233,12 @@ const TRANSLATIONS = {
         potWinMessage: '{pot}: {winner} 以 {hand} 赢得 ${amount}',
 
         // Table
-        tableTitle: '间谍过家家'
+        tableTitle: '间谍过家家',
+
+        // Pot Preset Buttons
+        halfPot: '半池',
+        onePot: '1倍底池',
+        twoPot: '2倍底池'
     }
 };
 
@@ -361,6 +371,14 @@ function updateLanguageUI() {
             option.textContent = t(key);
         });
     }
+
+    // Update pot preset buttons
+    const btnHalfPot = document.getElementById('btn-half-pot');
+    const btnOnePot = document.getElementById('btn-one-pot');
+    const btnTwoPot = document.getElementById('btn-two-pot');
+    if (btnHalfPot) btnHalfPot.textContent = t('halfPot');
+    if (btnOnePot) btnOnePot.textContent = t('onePot');
+    if (btnTwoPot) btnTwoPot.textContent = t('twoPot');
 
     // Update hand number display
     updateHandNumberDisplay();
@@ -2400,6 +2418,50 @@ document.getElementById('raise-slider').addEventListener('input', (e) => {
     document.getElementById('raise-amount').textContent = e.target.value;
 });
 
+// ===== Pot Preset Buttons =====
+// Set slider to a fraction/multiple of the pot amount, capped at player's max chips
+function setPotPreset(multiplier) {
+    const player = gameState.players[0];
+    const slider = document.getElementById('raise-slider');
+
+    // Calculate target bet based on pot
+    let targetBet = Math.floor(gameState.pot * multiplier);
+
+    // Ensure target bet is at least the minimum raise
+    const minRaise = parseInt(slider.min);
+    if (targetBet < minRaise) {
+        targetBet = minRaise;
+    }
+
+    // Cap at player's maximum available bet (current chips + already bet)
+    const maxBet = player.chips + player.bet;
+    if (targetBet > maxBet) {
+        targetBet = maxBet;
+    }
+
+    // Also cap at slider max
+    const sliderMax = parseInt(slider.max);
+    if (targetBet > sliderMax) {
+        targetBet = sliderMax;
+    }
+
+    // Update slider and display
+    slider.value = targetBet;
+    document.getElementById('raise-amount').textContent = targetBet;
+}
+
+document.getElementById('btn-half-pot').addEventListener('click', () => {
+    setPotPreset(0.5);
+});
+
+document.getElementById('btn-one-pot').addEventListener('click', () => {
+    setPotPreset(1);
+});
+
+document.getElementById('btn-two-pot').addEventListener('click', () => {
+    setPotPreset(2);
+});
+
 // Helper for reset and start new game
 let lastNewGameClickTime = 0;
 let cooldownIntervalId = null;
@@ -2466,6 +2528,9 @@ function resetAndStartNewGame() {
 
     // Randomize AI player portraits for this new game
     randomizeAIPortraits();
+
+    // Show all player elements and controls (remove pre-game hidden state)
+    showGameElements();
 
     startNewGame(true);
 }
@@ -2680,9 +2745,45 @@ function createBubbleParticle(particle, x, y) {
     particle.style.height = `${size}px`;
 }
 
+// ===== Pre-Game Element Visibility =====
+// Hide player info and controls before game starts
+function hideGameElements() {
+    // Hide all player info elements (portraits, names, chips)
+    const playerInfos = document.querySelectorAll('.player-info');
+    playerInfos.forEach(info => {
+        info.classList.add('pre-game-hidden');
+        info.classList.remove('game-started');
+    });
+
+    // Hide controls
+    const controls = document.getElementById('controls');
+    if (controls) {
+        controls.classList.add('pre-game-hidden');
+        controls.classList.remove('game-started');
+    }
+}
+
+// Show player info and controls when game starts
+function showGameElements() {
+    // Show all player info elements
+    const playerInfos = document.querySelectorAll('.player-info');
+    playerInfos.forEach(info => {
+        info.classList.remove('pre-game-hidden');
+        info.classList.add('game-started');
+    });
+
+    // Show controls
+    const controls = document.getElementById('controls');
+    if (controls) {
+        controls.classList.remove('pre-game-hidden');
+        controls.classList.add('game-started');
+    }
+}
+
 // Initialize
 initPlayers();
 SoundManager.init();
+hideGameElements(); // Hide player elements initially
 updateUI();
 updateLanguageUI(); // Apply saved language preference
 showMessage(t('startMessage'));

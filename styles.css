@@ -1014,6 +1014,13 @@ body {
 
 .raise-controls {
     display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+}
+
+.raise-controls>.slider-row {
+    display: flex;
     align-items: center;
     gap: 10px;
 }
@@ -1040,6 +1047,30 @@ body {
     font-weight: 600;
     color: var(--accent-gold);
     min-width: 60px;
+}
+
+/* Pot Preset Buttons */
+.pot-presets {
+    display: flex;
+    gap: 6px;
+}
+
+.btn-pot-preset {
+    padding: 6px 10px;
+    font-size: 0.7rem;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0.05) 100%);
+    border: 1px solid var(--glass-border);
+    color: white;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+}
+
+.btn-pot-preset:hover:not(:disabled) {
+    background: linear-gradient(145deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 215, 0, 0.1) 100%);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
 }
 
 /* ===== Game Layout ===== */
@@ -1725,4 +1756,35 @@ body {
     color: var(--primary);
     padding: 12px 40px;
     font-weight: 600;
+}
+
+/* ===== Pre-Game State - Hide elements until game starts ===== */
+/* Hide player avatar and details before game starts, but keep the box visible */
+.player-info.pre-game-hidden .player-avatar,
+.player-info.pre-game-hidden .player-details {
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Show player avatar and details when game has started */
+.player-info.game-started .player-avatar,
+.player-info.game-started .player-details {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Hide controls before game starts */
+.controls.pre-game-hidden {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+/* Show controls when game has started */
+.controls.game-started {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }

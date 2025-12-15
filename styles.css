@@ -345,7 +345,7 @@ body {
 /* ===== Table Title ===== */
 .table-title {
     position: absolute;
-    top: 13%;
+    top: 12%;
     left: 50%;
     transform: translateX(-50%);
     font-size: 2.2rem;

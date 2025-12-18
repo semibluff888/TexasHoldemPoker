@@ -610,6 +610,32 @@ body {
     font-weight: 500;
 }
 
+.player-level {
+    font-size: 0.7rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: lowercase;
+    opacity: 0.8;
+}
+
+.player-level:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+
+.player-level.easy {
+    color: var(--accent-green);
+}
+
+.player-level.medium {
+    color: var(--accent-gold);
+}
+
+.player-level.hard {
+    color: var(--accent);
+}
+
 /* ===== Cards ===== */
 .player-cards {
     display: flex;

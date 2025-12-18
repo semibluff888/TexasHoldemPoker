@@ -134,7 +134,12 @@ const TRANSLATIONS = {
 
         // Game Mode
         fastMode: 'FAST',
-        slowMode: 'SLOW'
+        slowMode: 'SLOW',
+
+        // AI Levels
+        easy: 'easy',
+        medium: 'medium',
+        hard: 'hard'
     },
     zh: {
         // Header & Buttons
@@ -252,7 +257,12 @@ const TRANSLATIONS = {
 
         // Game Mode
         fastMode: '快速',
-        slowMode: '慢速'
+        slowMode: '慢速',
+
+        // AI Levels
+        easy: '简单',
+        medium: '中等',
+        hard: '困难'
     }
 };
 
@@ -361,9 +371,18 @@ function updateLanguageUI() {
 
     // Update player names
     for (let i = 0; i < gameState.players.length; i++) {
+        const player = gameState.players[i];
         const nameEl = document.querySelector(`#player-${i} .player-name`);
         if (nameEl) {
             nameEl.textContent = i === 0 ? t('you') : `${t('aiPlayer')} ${i}`;
+        }
+
+        // Update level label if it's an AI
+        if (player.isAI) {
+            const levelEl = document.getElementById(`level-${player.id}`);
+            if (levelEl) {
+                levelEl.textContent = `(${t(player.aiLevel)})`;
+            }
         }
     }
 
@@ -610,10 +629,10 @@ let currentGameId = 0; // Game ID to track and cancel previous games
 function initPlayers() {
     gameState.players = [
         { id: 0, name: 'You', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: false, allIn: false },
-        { id: 1, name: 'AI Player 1', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false },
-        { id: 2, name: 'AI Player 2', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false },
-        { id: 3, name: 'AI Player 3', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false },
-        { id: 4, name: 'AI Player 4', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false }
+        { id: 1, name: 'AI Player 1', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy' },
+        { id: 2, name: 'AI Player 2', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy' },
+        { id: 3, name: 'AI Player 3', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy' },
+        { id: 4, name: 'AI Player 4', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy' }
     ];
 }
 
@@ -863,6 +882,20 @@ function updateUI() {
 
         updatePlayerCards(player.id, true);
         updateBetDisplay(player.id);
+
+        // Update AI Level display
+        if (player.isAI) {
+            const levelEl = document.getElementById(`level-${player.id}`);
+            if (levelEl) {
+                levelEl.textContent = `(${t(player.aiLevel)})`;
+                levelEl.className = `player-level ${player.aiLevel}`;
+
+                // Add click listener if not already added
+                if (!levelEl.onclick) {
+                    levelEl.onclick = () => toggleAILevel(player.id);
+                }
+            }
+        }
     }
 
     updateCommunityCards();
@@ -1339,6 +1372,21 @@ function aiDecision(playerId) {
             playerFold(playerId);
         }
     }
+}
+
+function toggleAILevel(playerId) {
+    const player = gameState.players[playerId];
+    if (!player || !player.isAI) return;
+
+    if (player.aiLevel === 'easy') {
+        player.aiLevel = 'medium';
+    } else if (player.aiLevel === 'medium') {
+        player.aiLevel = 'hard';
+    } else {
+        player.aiLevel = 'easy';
+    }
+
+    updateUI();
 }
 
 function evaluateAIHand(player) {

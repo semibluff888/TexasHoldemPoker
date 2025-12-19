@@ -139,7 +139,17 @@ const TRANSLATIONS = {
         // AI Levels
         easy: 'easy',
         medium: 'medium',
-        hard: 'hard'
+        hard: 'hard',
+
+        // Tooltips
+        changeDifficulty: 'Click to change difficulty',
+        removeAI: 'Remove AI',
+        addAI: 'Add AI',
+
+        // AI Add/Remove
+        aiJoined: '{name} has joined the game.',
+        aiLeft: '{name} has left the game.',
+        minAiRequired: 'The game requires at least one AI player to continue.'
     },
     zh: {
         // Header & Buttons
@@ -262,7 +272,17 @@ const TRANSLATIONS = {
         // AI Levels
         easy: '简单',
         medium: '中等',
-        hard: '困难'
+        hard: '困难',
+
+        // Tooltips
+        changeDifficulty: '点击修改难度',
+        removeAI: '移除 AI',
+        addAI: '添加 AI',
+
+        // AI Add/Remove
+        aiJoined: '{name} 已加入游戏',
+        aiLeft: '{name} 已离开游戏',
+        minAiRequired: '游戏至少需要一名 AI 玩家'
     }
 };
 
@@ -382,7 +402,16 @@ function updateLanguageUI() {
             const levelEl = document.getElementById(`level-${player.id}`);
             if (levelEl) {
                 levelEl.textContent = `(${t(player.aiLevel)})`;
+                levelEl.title = t('changeDifficulty');
             }
+
+            // Update Remove AI button tooltip
+            const removeBtn = document.querySelector(`#player-${player.id} .btn-remove`);
+            if (removeBtn) removeBtn.title = t('removeAI');
+
+            // Update Add AI plus sign tooltip
+            const plusSign = document.querySelector(`#player-${player.id} .player-add-plus`);
+            if (plusSign) plusSign.title = t('addAI');
         }
     }
 
@@ -628,11 +657,11 @@ let currentGameId = 0; // Game ID to track and cancel previous games
 // Initialize Players
 function initPlayers() {
     gameState.players = [
-        { id: 0, name: 'You', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: false, allIn: false },
-        { id: 1, name: 'AI Player 1', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy' },
-        { id: 2, name: 'AI Player 2', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy' },
-        { id: 3, name: 'AI Player 3', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy' },
-        { id: 4, name: 'AI Player 4', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy' }
+        { id: 0, name: 'You', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: false, allIn: false, isRemoved: false, isPendingJoin: false },
+        { id: 1, name: 'AI Player 1', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false },
+        { id: 2, name: 'AI Player 2', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false },
+        { id: 3, name: 'AI Player 3', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false },
+        { id: 4, name: 'AI Player 4', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false }
     ];
 }
 
@@ -867,6 +896,7 @@ function updateUI() {
 
         const playerEl = document.getElementById(`player-${player.id}`);
         playerEl.classList.toggle('folded', player.folded);
+        playerEl.classList.toggle('removed', !!player.isRemoved);
         // Only show active state when game is in progress (not idle) and player can act
         const isActivePlayer = gameState.phase !== 'idle' &&
             gameState.currentPlayerIndex === player.id &&
@@ -878,23 +908,67 @@ function updateUI() {
 
         // Update dealer chip
         const dealerChip = document.getElementById(`dealer-${player.id}`);
-        dealerChip.classList.toggle('visible', gameState.dealerIndex === player.id);
+        dealerChip.classList.toggle('visible', gameState.dealerIndex === player.id && !player.isRemoved);
 
         updatePlayerCards(player.id, true);
         updateBetDisplay(player.id);
 
-        // Update AI Level display
+        // Update AI Level and Add/Remove display
         if (player.isAI) {
             const levelEl = document.getElementById(`level-${player.id}`);
+            const avatarContainer = document.getElementById(`avatar-${player.id}`);
+
+            // Handle remove button
+            let removeBtn = playerEl.querySelector('.btn-remove');
+            if (!removeBtn) {
+                removeBtn = document.createElement('button');
+                removeBtn.className = 'btn-remove';
+                removeBtn.innerHTML = '×';
+                removeBtn.title = t('removeAI');
+                removeBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    removeAIPlayer(player.id);
+                };
+                playerEl.querySelector('.player-info').appendChild(removeBtn);
+            }
+            removeBtn.style.display = player.isRemoved ? 'none' : 'block';
+
+            // Handle plus sign for removed state
+            let plusSign = playerEl.querySelector('.player-add-plus');
+            if (!plusSign) {
+                plusSign = document.createElement('div');
+                plusSign.className = 'player-add-plus';
+                plusSign.innerHTML = '+';
+                plusSign.title = t('addAI');
+                plusSign.onclick = (e) => {
+                    e.stopPropagation();
+                    addAIPlayer(player.id);
+                };
+                playerEl.querySelector('.player-info').appendChild(plusSign);
+            }
+            plusSign.style.display = player.isRemoved ? 'flex' : 'none';
+
             if (levelEl) {
                 levelEl.textContent = `(${t(player.aiLevel)})`;
+                levelEl.title = t('changeDifficulty');
                 levelEl.className = `player-level ${player.aiLevel}`;
+                levelEl.style.display = player.isRemoved ? 'none' : 'block';
 
                 // Add click listener if not already added
                 if (!levelEl.onclick) {
-                    levelEl.onclick = () => toggleAILevel(player.id);
+                    levelEl.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleAILevel(player.id);
+                    }
                 }
             }
+
+            // Hide normal details if removed
+            const nameEl = playerEl.querySelector('.player-name');
+            const chipsEl = playerEl.querySelector('.player-chips');
+            if (nameEl) nameEl.style.display = player.isRemoved ? 'none' : 'block';
+            if (chipsEl) chipsEl.style.display = player.isRemoved ? 'none' : 'block';
+            if (avatarContainer) avatarContainer.style.display = player.isRemoved ? 'none' : 'flex';
         }
     }
 
@@ -1376,7 +1450,7 @@ function aiDecision(playerId) {
 
 function toggleAILevel(playerId) {
     const player = gameState.players[playerId];
-    if (!player || !player.isAI) return;
+    if (!player || !player.isAI || player.isRemoved) return;
 
     if (player.aiLevel === 'easy') {
         player.aiLevel = 'medium';
@@ -1385,6 +1459,74 @@ function toggleAILevel(playerId) {
     } else {
         player.aiLevel = 'easy';
     }
+
+    updateUI();
+}
+
+function removeAIPlayer(playerId) {
+    const player = gameState.players[playerId];
+    if (!player || !player.isAI || player.isRemoved) return;
+
+    // Check minimum AI requirement
+    const activeAIs = gameState.players.filter(p => p.isAI && !p.isRemoved);
+    if (activeAIs.length <= 1) {
+        showMessage(t('minAiRequired'));
+        return;
+    }
+
+    player.isRemoved = true;
+    player.folded = true; // folded immediately
+
+    // Action log
+    const name = `${t('aiPlayer')} ${playerId}`;
+    showMessage(t('aiLeft').replace('{name}', name));
+
+    // Update UI
+    updateUI();
+
+    // If it was the player's turn, resolve it
+    if (gameState.currentPlayerIndex === playerId && gameState.phase !== 'idle' && gameState.phase !== 'showdown') {
+        if (playerActionResolver) {
+            resolvePlayerAction();
+        } else {
+            // If AI's turn during runBettingRound, it will continue in the loop
+            // but we might need to trigger nextPlayer manually if the loop is waiting
+        }
+    }
+
+    // Check if hand is over (only 1 player remains) - wake up the loop to handle it correctly in showdown
+    const playersInHand = getPlayersInHand();
+    if (playersInHand.length === 1 && gameState.phase !== 'idle' && gameState.phase !== 'showdown') {
+        resolvePlayerAction();
+    }
+}
+
+
+function addAIPlayer(playerId) {
+    const player = gameState.players[playerId];
+    if (!player || !player.isAI || !player.isRemoved) return;
+
+    player.isRemoved = false;
+    player.isPendingJoin = true; // Will join next hand
+    player.chips = STARTING_CHIPS;
+    player.folded = true; // Stay out of current hand
+    player.allIn = false;
+    player.bet = 0;
+    player.cards = [];
+
+    // Random portrait
+    const avatarContainer = document.getElementById(`avatar-${playerId}`);
+    if (avatarContainer) {
+        const img = avatarContainer.querySelector('img');
+        if (img) {
+            const shuffled = [...AI_PORTRAITS].sort(() => Math.random() - 0.5);
+            img.src = shuffled[0];
+        }
+    }
+
+    // Action log
+    const name = `${t('aiPlayer')} ${playerId}`;
+    showMessage(t('aiJoined').replace('{name}', name));
 
     updateUI();
 }
@@ -1430,7 +1572,8 @@ function nextPlayer() {
         attempts++;
     } while (
         (gameState.players[gameState.currentPlayerIndex].folded ||
-            gameState.players[gameState.currentPlayerIndex].allIn) &&
+            gameState.players[gameState.currentPlayerIndex].allIn ||
+            gameState.players[gameState.currentPlayerIndex].isRemoved) &&
         attempts < numPlayers
     );
 
@@ -1438,11 +1581,11 @@ function nextPlayer() {
 }
 
 function getActivePlayers() {
-    return gameState.players.filter(p => !p.folded && p.chips >= 0);
+    return gameState.players.filter(p => !p.folded && p.chips >= 0 && !p.isRemoved);
 }
 
 function getPlayersInHand() {
-    return gameState.players.filter(p => !p.folded);
+    return gameState.players.filter(p => !p.folded && !p.isRemoved);
 }
 
 // Animate bets moving to pot
@@ -1830,23 +1973,27 @@ async function startNewGame(randomizeDealer = false) {
     gameState.minRaise = BIG_BLIND;
     gameState.currentPlayerIndex = -1; // No active player until blinds are posted
 
-    // Reset players
+    // Clear isPendingJoin flags and reset states for all players
     for (const player of gameState.players) {
+        if (player.isPendingJoin) {
+            player.isPendingJoin = false;
+        }
+
         player.cards = [];
         player.bet = 0;
         player.totalContribution = 0;
-        player.folded = false;
+        player.folded = player.isRemoved; // Removed players stay folded
         player.allIn = false;
 
-        // Eliminate players with no chips
-        if (player.chips <= 0) {
+        // Eliminate players with no chips (if not removed)
+        if (!player.isRemoved && player.chips <= 0) {
             player.chips = 0;
             player.folded = true;
         }
     }
 
-    // Check if game can continue
-    const playersWithChips = gameState.players.filter(p => p.chips > 0);
+    // Check if game can continue (at least human + 1 active AI)
+    const playersWithChips = gameState.players.filter(p => !p.isRemoved && p.chips > 0);
     if (playersWithChips.length < 2) {
         showMessage('Game Over! ' + (playersWithChips[0]?.name || 'No one') + ' wins!');
         document.getElementById('btn-new-game').textContent = 'RESTART GAME';
@@ -1858,7 +2005,8 @@ async function startNewGame(randomizeDealer = false) {
     // Set dealer position
     if (randomizeDealer) {
         // Random dealer position for fresh game
-        const eligibleDealers = gameState.players.map((p, i) => ({ player: p, index: i })).filter(p => p.player.chips > 0);
+        const eligibleDealers = gameState.players.map((p, i) => ({ player: p, index: i }))
+            .filter(p => !p.player.isRemoved && p.player.chips > 0);
         if (eligibleDealers.length > 0) {
             const randomPlayerIndex = Math.floor(Math.random() * eligibleDealers.length);
             gameState.dealerIndex = eligibleDealers[randomPlayerIndex].index;
@@ -1867,7 +2015,7 @@ async function startNewGame(randomizeDealer = false) {
         // Move dealer clockwise for next round
         do {
             gameState.dealerIndex = (gameState.dealerIndex + 1) % gameState.players.length;
-        } while (gameState.players[gameState.dealerIndex].chips <= 0);
+        } while (gameState.players[gameState.dealerIndex].isRemoved || gameState.players[gameState.dealerIndex].chips <= 0);
     }
 
     // Post blinds
@@ -2107,6 +2255,13 @@ async function showdown(thisGameId) {
         const playerCardsContainer = document.getElementById(`cards-${winner.id}`);
         const playerCardEls = playerCardsContainer.querySelectorAll('.card');
         playerCardEls.forEach(card => card.classList.add('winning-card'));
+
+        // Show immediate message for feedback (consistent with other wins)
+        showMessage(t('potWinMessage')
+            .replace('{pot}', t('mainPot') || 'Main Pot')
+            .replace('{winner}', getTranslatedPlayerName(winner))
+            .replace('{amount}', winAmount)
+            .replace('{hand}', t('everyoneFolded')));
 
         // Log fold win details in showdown style
         logFoldWinDetails(winner, winAmount);

@@ -636,6 +636,78 @@ body {
     color: var(--accent);
 }
 
+/* AI Add/Remove */
+.btn-remove {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 20px;
+    height: 20px;
+    background: rgba(255, 68, 68, 0.8);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 14px;
+    line-height: 18px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.player-info:hover .btn-remove {
+    display: flex;
+}
+
+.btn-remove:hover {
+    background: #ff4444;
+    transform: scale(1.1);
+}
+
+.player-add-plus {
+    width: 50px;
+    height: 50px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    color: rgba(255, 255, 255, 0.5);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: auto;
+}
+
+.player-add-plus:hover {
+    background: rgba(255, 255, 255, 0.2);
+    border-color: var(--accent-gold);
+    color: var(--accent-gold);
+    transform: scale(1.05);
+}
+
+.player.removed .player-info {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px dashed rgba(255, 255, 255, 0.1);
+    box-shadow: none;
+    min-width: 120px;
+    min-height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.player.removed .player-cards,
+.player.removed .player-bet,
+.player.removed .dealer-chip,
+.player.removed .player-action {
+    display: none !important;
+}
+
 /* ===== Cards ===== */
 .player-cards {
     display: flex;

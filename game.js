@@ -9,6 +9,44 @@ const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
 const STARTING_CHIPS = 1000;
 
+// ===== Enhanced AI Constants =====
+// Hand Buckets for preflop decisions (based on position-adjusted ranges)
+const BUCKET_PREMIUM = [
+    'AA', 'KK', 'QQ', 'JJ', 'TT',
+    'AKs', 'AQs', 'AJs', 'ATs', 'KQs', 'KJs', 'QJs',
+    'AKo', 'AQo'
+];
+
+const BUCKET_STRONG = [
+    '99', '88', '77', '66',
+    'T9s', '98s', '87s', 'JTs', 'QTs', 'KTs',
+    'A5s', 'A4s', 'A3s',
+    'AJo', 'KQo'
+];
+
+const BUCKET_SPECULATIVE = [
+    '55', '44', '33', '22',
+    'A9s', 'A8s', 'A7s', 'A6s', 'A2s',
+    'K9s', 'K8s', 'Q9s', 'J9s', 'T8s', '97s', '86s', '75s', '76s', '65s',
+    'ATo', 'KTo', 'QTo', 'JTo', 'A9o', 'KJo', 'QJo',
+    'T9o', '98o', 'J9o'
+];
+
+const BUCKET_WEAK = [
+    'K7s', 'K6s', 'K5s', 'K4s', 'K3s',
+    'Q8s', 'Q7s', 'Q6s', 'Q5s', 'Q4s',
+    'J8s', 'J7s', 'J6s', 'J5s',
+    'T7s', 'T6s', '96s', '85s', '74s', '64s', '63s', '53s', '54s', '43s',
+    'A8o', 'A7o', 'A6o', 'A5o', 'A4o', 'A3o',
+    'K9o', 'K8o', 'K7o', 'K6o',
+    'Q9o', 'Q8o', 'Q7o', 'J8o',
+    'T8o', 'T7o', '97o', '87o', '86o', '76o', '75o', '65o'
+];
+
+// Bet sizing abstraction (as multipliers of pot)
+const BET_SIZES = { HALF: 0.5, POT: 1.0, DOUBLE: 2.0 };
+
+
 // ===== Game Mode Settings =====
 const COUNTDOWN_DURATION = 10000; // 10 seconds for fast mode
 let gameMode = localStorage.getItem('pokerGameMode') || 'fast'; // 'fast' or 'slow'
@@ -645,7 +683,10 @@ let gameState = {
     currentPlayerIndex: 0,
     phase: 'idle', // idle, preflop, flop, turn, river, showdown
     minRaise: BIG_BLIND,
-    displayedCommunityCards: 0
+    displayedCommunityCards: 0,
+    preflopRaiseCount: 0, // Track number of raises in preflop (0=limp/blinds, 1=open raise, 2=3bet, 3=4bet)
+    preflopAggressorId: null, // Player ID of the last raiser in preflop
+    cBetActive: false // Flag if the current active bet is a C-bet
 };
 
 // Hand History State
@@ -656,14 +697,58 @@ let currentGameId = 0; // Game ID to track and cancel previous games
 
 // Initialize Players
 function initPlayers() {
+    const defaultStats = {
+        handsPlayed: 0,
+        vpipCount: 0,        // Voluntarily put money in pot
+        vpipCountedThisHand: false, // Flag to ensure VPIP only counted once per hand
+        pfrCount: 0,         // Pre-flop raise
+        pfrCountedThisHand: false,  // Flag to ensure PFR only counted once per hand
+        threeBetCount: 0,    // Pre-flop 3-bet (re-raise against open raise)
+        threeBetCountedThisHand: false, // Flag to ensure 3-bet only counted once per hand
+        facedOpenRaiseCount: 0, // Opportunities to 3-bet (faced exactly one raise)
+        facedOpenRaiseCountedThisHand: false, // Flag to ensure opportunity only counted once per hand
+        cBetCount: 0,        // Continuation bet (preflop aggressor bets on flop)
+        cBetCountedThisHand: false,
+        cBetOpportunityCount: 0, // Opportunity to C-bet
+        cBetOpportunityCountedThisHand: false,
+        cBetFaced: 0,        // Times faced a c-bet
+        cBetFacedCountedThisHand: false,
+        foldToCBetCount: 0,  // Folded to continuation bet
+        showdownCount: 0    // Times went to showdown
+    };
+
     gameState.players = [
-        { id: 0, name: 'You', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: false, allIn: false, isRemoved: false, isPendingJoin: false },
-        { id: 1, name: 'AI Player 1', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false },
-        { id: 2, name: 'AI Player 2', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false },
-        { id: 3, name: 'AI Player 3', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false },
-        { id: 4, name: 'AI Player 4', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false }
+        { id: 0, name: 'You', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: false, allIn: false, isRemoved: false, isPendingJoin: false, stats: { ...defaultStats } },
+        { id: 1, name: 'AI Player 1', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false, stats: { ...defaultStats } },
+        { id: 2, name: 'AI Player 2', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false, stats: { ...defaultStats } },
+        { id: 3, name: 'AI Player 3', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false, stats: { ...defaultStats } },
+        { id: 4, name: 'AI Player 4', chips: STARTING_CHIPS, cards: [], bet: 0, totalContribution: 0, folded: false, isAI: true, allIn: false, aiLevel: 'easy', isRemoved: false, isPendingJoin: false, stats: { ...defaultStats } }
     ];
 }
+
+// Reset a player's stats to default values
+function resetPlayerStats(player) {
+    player.stats = {
+        handsPlayed: 0,
+        vpipCount: 0,
+        vpipCountedThisHand: false,
+        pfrCount: 0,
+        pfrCountedThisHand: false,
+        threeBetCount: 0,
+        threeBetCountedThisHand: false,
+        facedOpenRaiseCount: 0,
+        facedOpenRaiseCountedThisHand: false,
+        cBetCount: 0,
+        cBetCountedThisHand: false,
+        cBetOpportunityCount: 0,
+        cBetOpportunityCountedThisHand: false,
+        cBetFaced: 0,
+        cBetFacedCountedThisHand: false,
+        foldToCBetCount: 0,
+        showdownCount: 0
+    };
+}
+
 
 // Create and Shuffle Deck
 function createDeck() {
@@ -1239,6 +1324,11 @@ function playerFold(playerId) {
         animateFoldCards(playerId);
     }
 
+    // Track "Fold to C-Bet"
+    if (gameState.cBetActive) {
+        player.stats.foldToCBetCount++;
+    }
+
     player.folded = true;
     showAction(playerId, t('actionFold'), chipsBeforeAction);
     SoundManager.playFold();
@@ -1323,6 +1413,15 @@ function playerCall(playerId) {
     const chipsBeforeAction = player.chips;
     const callAmount = Math.min(gameState.currentBet - player.bet, player.chips);
 
+    // Track stats for opponent modeling
+    if (callAmount > 0) {
+        // VPIP only counts preflop voluntary actions, and only once per hand
+        if (gameState.phase === 'preflop' && !player.stats.vpipCountedThisHand) {
+            player.stats.vpipCount++;
+            player.stats.vpipCountedThisHand = true;
+        }
+    }
+
     player.chips -= callAmount;
     player.bet += callAmount;
     player.totalContribution += callAmount;
@@ -1345,6 +1444,50 @@ function playerRaise(playerId, totalBet) {
     const chipsBeforeAction = player.chips;
     const raiseAmount = totalBet - player.bet;
     const actualRaise = totalBet - gameState.currentBet;
+
+    // Track stats for opponent modeling
+    if (gameState.phase === 'preflop') {
+        // VPIP only counts once per hand
+        if (!player.stats.vpipCountedThisHand) {
+            player.stats.vpipCount++;
+            player.stats.vpipCountedThisHand = true;
+        }
+        // PFR only counts once per hand
+        if (!player.stats.pfrCountedThisHand) {
+            player.stats.pfrCount++;
+            player.stats.pfrCountedThisHand = true;
+        }
+
+        // Track 3-bets (re-raise against an open raise)
+        gameState.preflopRaiseCount++;
+        // If this is the 2nd raise (1st was open raise), it's a 3-bet
+        if (gameState.preflopRaiseCount === 2) {
+            if (!player.stats.threeBetCountedThisHand) {
+                player.stats.threeBetCount++;
+                player.stats.threeBetCountedThisHand = true;
+            }
+        }
+
+        // Track preflop aggressor (last player to raise preflop)
+        gameState.preflopAggressorId = playerId;
+    } else if (gameState.phase === 'flop') {
+        // Track C-bet (Continuation Bet)
+        // Must be preflop aggressor, first bet on flop (gameState.currentBet was 0 before this raise)
+        // Note: playerRaise is called for both betting (opening) and raising
+        if (playerId === gameState.preflopAggressorId &&
+            !player.stats.cBetCountedThisHand &&
+            gameState.currentBet === 0) {
+            player.stats.cBetCount++;
+            player.stats.cBetCountedThisHand = true;
+            gameState.cBetActive = true;
+        } else {
+            // Any other flop raise resets C-bet status (now it's a raise over a c-bet, or standard raise)
+            gameState.cBetActive = false;
+        }
+    } else {
+        // Raises in other phases reset C-bet active status
+        gameState.cBetActive = false;
+    }
 
     player.chips -= raiseAmount;
     player.bet = totalBet;
@@ -1477,6 +1620,9 @@ function removeAIPlayer(playerId) {
     player.isRemoved = true;
     player.folded = true; // folded immediately
 
+    // Reset player stats
+    resetPlayerStats(player);
+
     // Action log
     const name = `${t('aiPlayer')} ${playerId}`;
     showMessage(t('aiLeft').replace('{name}', name));
@@ -1562,7 +1708,451 @@ function evaluateAIHand(player) {
     return hand.rank / 10;
 }
 
-// Game Flow
+// ===== Enhanced AI System (Medium/Hard modes) =====
+
+// Convert hole cards to hand notation (e.g., 'AKs', 'QJo', 'TT')
+function getHandNotation(card1, card2) {
+    const v1 = card1.value === '10' ? 'T' : card1.value;
+    const v2 = card2.value === '10' ? 'T' : card2.value;
+    const val1 = getCardValue(card1.value);
+    const val2 = getCardValue(card2.value);
+
+    // Order by value (higher first)
+    const [high, low] = val1 >= val2 ? [v1, v2] : [v2, v1];
+    const suited = card1.suit === card2.suit;
+
+    if (high === low) {
+        return high + low; // Pair like 'AA', 'KK'
+    }
+    return high + low + (suited ? 's' : 'o');
+}
+
+// Get hand bucket (premium, strong, speculative, weak, trash)
+function getHandBucket(card1, card2) {
+    const notation = getHandNotation(card1, card2);
+
+    if (BUCKET_PREMIUM.includes(notation)) return 'premium';
+    if (BUCKET_STRONG.includes(notation)) return 'strong';
+    if (BUCKET_SPECULATIVE.includes(notation)) return 'speculative';
+    if (BUCKET_WEAK.includes(notation)) return 'weak';
+    return 'trash';
+}
+
+// Get player position relative to dealer
+function getPosition(playerId) {
+    const activePlayers = gameState.players.filter(p => !p.isRemoved && !p.folded);
+    const numActive = activePlayers.length;
+
+    // Find position relative to dealer (0 = dealer, higher = earlier to act preflop)
+    let posFromDealer = (playerId - gameState.dealerIndex + gameState.players.length) % gameState.players.length;
+
+    // Map to position categories
+    if (numActive <= 3) {
+        // Short-handed: only late and blinds
+        return posFromDealer <= 1 ? 'blinds' : 'late';
+    }
+
+    // Full ring approximation
+    if (posFromDealer <= 1) return 'blinds';  // SB/BB
+    if (posFromDealer <= 2) return 'early';
+    if (posFromDealer <= 3) return 'middle';
+    return 'late'; // Button and cutoff
+}
+
+// Check if hand should be played based on position
+function shouldPlayHand(bucket, position) {
+    switch (position) {
+        case 'early':
+            return bucket === 'premium';
+        case 'middle':
+            return bucket === 'premium' || bucket === 'strong';
+        case 'late':
+            return bucket !== 'trash';
+        case 'blinds':
+            return bucket !== 'trash'; // Defend wider from blinds
+        default:
+            return bucket === 'premium' || bucket === 'strong';
+    }
+}
+
+// Evaluate draw potential (flush draw, straight draw)
+function evaluateDraws(holeCards, communityCards) {
+    const allCards = [...holeCards, ...communityCards];
+    const draws = {
+        flushDraw: false,      // 4 to a flush (9 outs)
+        openEndedStraight: false, // 8 outs
+        gutshot: false,        // 4 outs
+        backdoorFlush: false,  // 3 to a flush
+        outs: 0
+    };
+
+    if (communityCards.length < 3) return draws;
+
+    // Check flush draw
+    const suitCounts = {};
+    for (const card of allCards) {
+        suitCounts[card.suit] = (suitCounts[card.suit] || 0) + 1;
+    }
+    for (const count of Object.values(suitCounts)) {
+        if (count === 4) {
+            draws.flushDraw = true;
+            draws.outs += 9;
+        } else if (count === 3 && communityCards.length === 3) {
+            draws.backdoorFlush = true;
+            draws.outs += 1.5; // Backdoor worth ~1.5 outs
+        }
+    }
+
+    // Check straight draw
+    const values = allCards.map(c => getCardValue(c.value));
+    const uniqueVals = [...new Set(values)].sort((a, b) => a - b);
+
+    // Check for open-ended straight draw (4 consecutive with room on both ends)
+    for (let i = 0; i <= uniqueVals.length - 4; i++) {
+        const span = uniqueVals[i + 3] - uniqueVals[i];
+        if (span === 3) {
+            // 4 consecutive - check if open-ended
+            if (uniqueVals[i] > 2 && uniqueVals[i + 3] < 14) {
+                draws.openEndedStraight = true;
+                draws.outs += 8;
+            } else {
+                draws.gutshot = true;
+                draws.outs += 4;
+            }
+            break;
+        } else if (span === 4) {
+            // Gutshot (one gap)
+            draws.gutshot = true;
+            draws.outs += 4;
+            break;
+        }
+    }
+
+    return draws;
+}
+
+// Calculate win probability based on hand strength and draws
+function calculateWinProbability(player, communityCards) {
+    const phase = gameState.phase;
+
+    if (phase === 'preflop') {
+        // Use bucket-based probability
+        const bucket = getHandBucket(player.cards[0], player.cards[1]);
+        switch (bucket) {
+            case 'premium': return 0.75 + Math.random() * 0.1;
+            case 'strong': return 0.55 + Math.random() * 0.1;
+            case 'speculative': return 0.40 + Math.random() * 0.1;
+            case 'weak': return 0.30 + Math.random() * 0.05;
+            default: return 0.20 + Math.random() * 0.05;
+        }
+    }
+
+    // Post-flop: combine made hand strength with draw equity
+    const allCards = [...player.cards, ...communityCards];
+    const hand = evaluateHand(allCards);
+    const madeHandStrength = hand.rank / 10; // 0.1 to 1.0
+
+    const draws = evaluateDraws(player.cards, communityCards);
+
+    // Calculate draw equity
+    let drawEquity = 0;
+    const cardsTocome = phase === 'flop' ? 2 : (phase === 'turn' ? 1 : 0);
+    if (cardsTocome > 0) {
+        // Rule of 2 and 4: outs * 2 per card to come
+        drawEquity = Math.min(0.45, (draws.outs * 2 * cardsTocome) / 100);
+    }
+
+    // Combine made hand and draw equity (don't double count if already made)
+    return Math.min(0.95, madeHandStrength + drawEquity * (1 - madeHandStrength));
+}
+
+// Get opponent tendencies from stats
+function getOpponentProfile(player) {
+    const stats = player.stats;
+    const hands = Math.max(1, stats.handsPlayed);
+
+    return {
+        vpip: stats.vpipCount / hands,           // Voluntarily put in pot %
+        pfr: stats.pfrCount / hands,             // Pre-flop raise %
+        threeBet: stats.threeBetCount / Math.max(1, stats.facedOpenRaiseCount), // Pre-flop 3-bet %
+        cBet: stats.cBetCount / Math.max(1, stats.cBetOpportunityCount), // Continuation bet %
+        foldToCBet: stats.foldToCBetCount / Math.max(1, stats.cBetFaced),
+        showdownRate: stats.showdownCount / hands,
+        isTight: stats.vpipCount / hands < 0.20,
+        isLoose: stats.vpipCount / hands > 0.40,
+        isAggressive: stats.pfrCount / hands > 0.25
+    };
+}
+
+// Calculate bet amount based on pot size and multiplier
+function calculateBetAmount(multiplier, playerId) {
+    const player = gameState.players[playerId];
+    const potSize = gameState.pot;
+    const betAmount = Math.floor(potSize * multiplier);
+    const minBet = gameState.currentBet + gameState.minRaise;
+    const maxBet = player.chips + player.bet;
+
+    return Math.min(maxBet, Math.max(minBet, betAmount));
+}
+
+// Enhanced preflop decision
+function preflopDecisionEnhanced(playerId) {
+    const player = gameState.players[playerId];
+    const callAmount = gameState.currentBet - player.bet;
+    const bucket = getHandBucket(player.cards[0], player.cards[1]);
+    const position = getPosition(playerId);
+    const random = Math.random();
+
+    // Get main opponent profile (human player or strongest opponent)
+    const opponents = gameState.players.filter(p => p.id !== playerId && !p.folded && !p.isRemoved);
+    const mainOpponent = opponents[0] || gameState.players[0];
+    const opponentProfile = getOpponentProfile(mainOpponent);
+
+    // Position-based adjustments
+    const positionBonus = position === 'late' ? 0.1 : (position === 'blinds' ? 0.05 : 0);
+
+    // Opponent-based adjustments
+    const stealMore = opponentProfile.isTight ? 0.1 : 0;
+    const trapMore = opponentProfile.isAggressive ? 0.15 : 0;
+
+    if (bucket === 'premium') {
+        // Premium hands: mostly raise, sometimes trap
+        if (random < 0.20 + trapMore && callAmount > 0) {
+            // Slow play to trap aggressive opponents
+            playerCall(playerId);
+        } else {
+            // Raise - use larger size vs loose opponents
+            const sizeMult = opponentProfile.isLoose ? BET_SIZES.POT : BET_SIZES.HALF;
+            const raiseAmount = calculateBetAmount(sizeMult, playerId);
+            if (raiseAmount > gameState.currentBet) {
+                playerRaise(playerId, raiseAmount);
+            } else {
+                playerCall(playerId);
+            }
+        }
+    } else if (bucket === 'strong') {
+        // Strong hands: raise or call based on position
+        if (callAmount === 0) {
+            // Open raise
+            const raiseAmount = calculateBetAmount(BET_SIZES.HALF, playerId);
+            if (random < 0.75 + positionBonus && raiseAmount > gameState.currentBet) {
+                playerRaise(playerId, raiseAmount);
+            } else {
+                playerCheck(playerId);
+            }
+        } else if (callAmount <= player.chips * 0.15) {
+            // Facing a bet - call or 3-bet
+            if (random < 0.25) {
+                const raiseAmount = calculateBetAmount(BET_SIZES.POT, playerId);
+                if (raiseAmount > gameState.currentBet) {
+                    playerRaise(playerId, raiseAmount);
+                } else {
+                    playerCall(playerId);
+                }
+            } else {
+                playerCall(playerId);
+            }
+        } else {
+            // Large bet facing us
+            if (random < 0.6) {
+                playerCall(playerId);
+            } else {
+                playerFold(playerId);
+            }
+        }
+    } else if (bucket === 'speculative' && shouldPlayHand(bucket, position)) {
+        // Speculative hands: play from late position, call small bets
+        if (callAmount === 0) {
+            if (random < 0.4 + positionBonus + stealMore) {
+                const raiseAmount = calculateBetAmount(BET_SIZES.HALF, playerId);
+                if (raiseAmount > gameState.currentBet) {
+                    playerRaise(playerId, raiseAmount);
+                } else {
+                    playerCheck(playerId);
+                }
+            } else {
+                playerCheck(playerId);
+            }
+        } else if (callAmount <= player.chips * 0.08) {
+            if (random < 0.7) {
+                playerCall(playerId);
+            } else {
+                playerFold(playerId);
+            }
+        } else {
+            playerFold(playerId);
+        }
+    } else if (bucket === 'weak' && position === 'late') {
+        // Weak hands: only steal from button
+        if (callAmount === 0 && random < 0.25 + stealMore) {
+            const raiseAmount = calculateBetAmount(BET_SIZES.HALF, playerId);
+            if (raiseAmount > gameState.currentBet) {
+                playerRaise(playerId, raiseAmount);
+            } else {
+                playerCheck(playerId);
+            }
+        } else if (callAmount === 0) {
+            playerCheck(playerId);
+        } else {
+            playerFold(playerId);
+        }
+    } else {
+        // Trash hands: fold (except free check)
+        if (callAmount === 0) {
+            playerCheck(playerId);
+        } else {
+            playerFold(playerId);
+        }
+    }
+}
+
+// Enhanced postflop decision
+function postflopDecisionEnhanced(playerId) {
+    const player = gameState.players[playerId];
+    const callAmount = gameState.currentBet - player.bet;
+    const winProb = calculateWinProbability(player, gameState.communityCards);
+    const position = getPosition(playerId);
+    const random = Math.random();
+
+    // Get opponent profile
+    const opponents = gameState.players.filter(p => p.id !== playerId && !p.folded && !p.isRemoved);
+    const mainOpponent = opponents[0] || gameState.players[0];
+    const opponentProfile = getOpponentProfile(mainOpponent);
+
+    // Pot odds calculation
+    const potOdds = callAmount > 0 ? callAmount / (gameState.pot + callAmount) : 0;
+    const hasGoodOdds = winProb > potOdds;
+
+    // Position and opponent adjustments
+    const positionBonus = position === 'late' ? 0.08 : 0;
+    const bluffMore = opponentProfile.foldToCBet > 0.6 ? 0.15 : 0;
+    const trapMore = opponentProfile.isAggressive ? 0.12 : 0;
+    const valueOnly = opponentProfile.showdownRate > 0.35; // Don't bluff showdown stations
+
+    // Check for draws
+    const draws = evaluateDraws(player.cards, gameState.communityCards);
+    const hasStrongDraw = draws.flushDraw || draws.openEndedStraight;
+
+    if (winProb >= 0.7) {
+        // Strong hand - mostly bet for value
+        if (random < 0.20 + trapMore && callAmount > 0) {
+            // Trap aggressive opponents
+            playerCall(playerId);
+        } else if (callAmount === 0) {
+            // Bet for value
+            const sizeMult = random < 0.5 ? BET_SIZES.HALF : BET_SIZES.POT;
+            const betAmount = calculateBetAmount(sizeMult, playerId);
+            if (betAmount > gameState.currentBet) {
+                playerRaise(playerId, betAmount);
+            } else {
+                playerCheck(playerId);
+            }
+        } else {
+            // Facing bet - raise or call
+            if (random < 0.6) {
+                const raiseAmount = calculateBetAmount(BET_SIZES.POT, playerId);
+                if (raiseAmount > gameState.currentBet) {
+                    playerRaise(playerId, raiseAmount);
+                } else {
+                    playerCall(playerId);
+                }
+            } else {
+                playerCall(playerId);
+            }
+        }
+    } else if (winProb >= 0.4 || hasStrongDraw) {
+        // Medium hand or draw - mix of betting and calling
+        if (callAmount === 0) {
+            // Consider betting (semi-bluff with draws)
+            const betChance = hasStrongDraw ? 0.5 : 0.25;
+            if (random < betChance + positionBonus + bluffMore) {
+                const betAmount = calculateBetAmount(BET_SIZES.HALF, playerId);
+                if (betAmount > gameState.currentBet) {
+                    playerRaise(playerId, betAmount);
+                } else {
+                    playerCheck(playerId);
+                }
+            } else {
+                playerCheck(playerId);
+            }
+        } else if (hasGoodOdds || hasStrongDraw) {
+            // Call if odds are good or we have a draw
+            if (random < 0.15 && hasStrongDraw) {
+                // Semi-bluff raise with draws
+                const raiseAmount = calculateBetAmount(BET_SIZES.POT, playerId);
+                if (raiseAmount > gameState.currentBet) {
+                    playerRaise(playerId, raiseAmount);
+                } else {
+                    playerCall(playerId);
+                }
+            } else {
+                playerCall(playerId);
+            }
+        } else {
+            // Odds not good
+            if (random < 0.3) {
+                playerCall(playerId);
+            } else {
+                playerFold(playerId);
+            }
+        }
+    } else if (winProb >= 0.2) {
+        // Weak hand - mostly check/fold, occasional bluff
+        if (callAmount === 0) {
+            const bluffChance = valueOnly ? 0.02 : (0.08 + positionBonus + bluffMore);
+            if (random < bluffChance) {
+                const betAmount = calculateBetAmount(BET_SIZES.HALF, playerId);
+                if (betAmount > gameState.currentBet) {
+                    playerRaise(playerId, betAmount);
+                } else {
+                    playerCheck(playerId);
+                }
+            } else {
+                playerCheck(playerId);
+            }
+        } else if (hasGoodOdds && callAmount <= player.chips * 0.1) {
+            if (random < 0.4) {
+                playerCall(playerId);
+            } else {
+                playerFold(playerId);
+            }
+        } else {
+            playerFold(playerId);
+        }
+    } else {
+        // Trash hand - check or fold
+        if (callAmount === 0) {
+            // Rare bluff
+            const bluffChance = valueOnly ? 0 : (0.03 + bluffMore);
+            if (random < bluffChance && position === 'late') {
+                const betAmount = calculateBetAmount(BET_SIZES.HALF, playerId);
+                if (betAmount > gameState.currentBet) {
+                    playerRaise(playerId, betAmount);
+                } else {
+                    playerCheck(playerId);
+                }
+            } else {
+                playerCheck(playerId);
+            }
+        } else {
+            playerFold(playerId);
+        }
+    }
+}
+
+// Main enhanced AI decision function (for medium/hard modes)
+function aiDecisionEnhance(playerId) {
+    const player = gameState.players[playerId];
+    if (player.folded || player.allIn) return;
+
+    if (gameState.phase === 'preflop') {
+        preflopDecisionEnhanced(playerId);
+    } else {
+        postflopDecisionEnhanced(playerId);
+    }
+}
+
+
 function nextPlayer() {
     const numPlayers = gameState.players.length;
     let attempts = 0;
@@ -1658,6 +2248,9 @@ async function resetBets(thisGameId) {
     // Check again after animation in case game was cancelled
     if (thisGameId !== undefined && currentGameId !== thisGameId) return;
 
+    // Reset C-bet active status at start of betting round
+    gameState.cBetActive = false;
+
     for (const player of gameState.players) {
         player.bet = 0;
     }
@@ -1706,6 +2299,31 @@ async function runBettingRound() {
 
         // Check if this player can act
         if (!player.folded && !player.allIn && player.chips > 0) {
+            // Track "Faced Open Raise" stat
+            // If it's preflop, exactly one raise has occurred, and we haven't counted this yet for this player
+            if (gameState.phase === 'preflop' &&
+                gameState.preflopRaiseCount === 1 &&
+                !player.stats.facedOpenRaiseCountedThisHand) {
+                player.stats.facedOpenRaiseCount++;
+                player.stats.facedOpenRaiseCountedThisHand = true;
+            }
+
+            // Track C-bet Opportunity
+            // Preflop aggressor, on flop, facing no bet (opportunity to open)
+            if (gameState.phase === 'flop' &&
+                gameState.preflopAggressorId === player.id &&
+                gameState.currentBet === 0 &&
+                !player.stats.cBetOpportunityCountedThisHand) {
+                player.stats.cBetOpportunityCount++;
+                player.stats.cBetOpportunityCountedThisHand = true;
+            }
+
+            // Track "Faced C-Bet"
+            if (gameState.cBetActive && !player.stats.cBetFacedCountedThisHand) {
+                player.stats.cBetFaced++;
+                player.stats.cBetFacedCountedThisHand = true;
+            }
+
             const previousCurrentBet = gameState.currentBet;
 
             if (player.isAI) {
@@ -1714,7 +2332,13 @@ async function runBettingRound() {
                 await delay(800);
                 // Check again after await in case game was cancelled during delay
                 if (currentGameId !== thisGameId) return;
-                aiDecision(player.id);
+                // Route to appropriate AI based on difficulty level
+                if (player.aiLevel === 'easy') {
+                    aiDecision(player.id);
+                } else {
+                    // medium and hard use enhanced AI
+                    aiDecisionEnhance(player.id);
+                }
             } else {
                 // Play notification sound for human player's turn
                 SoundManager.playYourTurn();
@@ -1958,7 +2582,6 @@ async function startNewGame(randomizeDealer = false) {
 
     // Clear any previous winner highlights
     clearWinnerHighlights();
-
     // Restore pot display visibility (hidden during pot animation)
     const potDisplay = document.querySelector('.pot-display');
     if (potDisplay) potDisplay.style.visibility = 'visible';
@@ -1971,7 +2594,17 @@ async function startNewGame(randomizeDealer = false) {
     gameState.currentBet = 0;
     gameState.phase = 'preflop';
     gameState.minRaise = BIG_BLIND;
+    gameState.preflopRaiseCount = 0; // Reset raise count
+    gameState.preflopAggressorId = null; // Reset preflop aggressor
+    gameState.cBetActive = false; // Reset C-bet flag
     gameState.currentPlayerIndex = -1; // No active player until blinds are posted
+
+    // Reset all player stats if this is a fresh New Game (randomizeDealer = true)
+    if (randomizeDealer) {
+        for (const player of gameState.players) {
+            resetPlayerStats(player);
+        }
+    }
 
     // Clear isPendingJoin flags and reset states for all players
     for (const player of gameState.players) {
@@ -1989,6 +2622,19 @@ async function startNewGame(randomizeDealer = false) {
         if (!player.isRemoved && player.chips <= 0) {
             player.chips = 0;
             player.folded = true;
+        }
+
+        // Update stats for active players starting a new hand
+        if (!player.folded) {
+            player.stats.handsPlayed++;
+            // Reset per-hand stats flags
+            player.stats.vpipCountedThisHand = false;
+            player.stats.pfrCountedThisHand = false;
+            player.stats.threeBetCountedThisHand = false;
+            player.stats.facedOpenRaiseCountedThisHand = false;
+            player.stats.cBetCountedThisHand = false;
+            player.stats.cBetOpportunityCountedThisHand = false;
+            player.stats.cBetFacedCountedThisHand = false;
         }
     }
 
@@ -2214,6 +2860,13 @@ async function showdown(thisGameId) {
     if (currentGameId !== thisGameId) return;
 
     const playersInHand = getPlayersInHand();
+
+    // Track showdownCount - only if multiple players reach showdown (actual hand comparison)
+    if (playersInHand.length > 1) {
+        for (const player of playersInHand) {
+            player.stats.showdownCount++;
+        }
+    }
 
     // Reveal all cards
     for (const player of playersInHand) {

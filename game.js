@@ -53,6 +53,9 @@ let gameMode = localStorage.getItem('pokerGameMode') || 'fast'; // 'fast' or 'sl
 let countdownTimerId = null;
 let countdownStartTime = null;
 
+// Stats display toggle
+let showAllStats = localStorage.getItem('showAllStats') === 'true';
+
 // ===== Language System =====
 let currentLanguage = localStorage.getItem('pokerLanguage') || 'en';
 
@@ -187,7 +190,16 @@ const TRANSLATIONS = {
         // AI Add/Remove
         aiJoined: '{name} has joined the game.',
         aiLeft: '{name} has left the game.',
-        minAiRequired: 'The game requires at least one AI player to continue.'
+        minAiRequired: 'The game requires at least one AI player to continue.',
+
+        // Player Stats
+        statsHands: 'Hands',
+        statsVPIP: 'VPIP',
+        statsPFR: 'PFR',
+        stats3Bet: '3-Bet',
+        statsCBet: 'C-Bet',
+        statsFoldToCBet: 'Fold to CBet',
+        statsShowdown: 'Showdown'
     },
     zh: {
         // Header & Buttons
@@ -320,7 +332,16 @@ const TRANSLATIONS = {
         // AI Add/Remove
         aiJoined: '{name} 已加入游戏',
         aiLeft: '{name} 已离开游戏',
-        minAiRequired: '游戏至少需要一名 AI 玩家'
+        minAiRequired: '游戏至少需要一名 AI 玩家',
+
+        // Player Stats
+        statsHands: '牌局数',
+        statsVPIP: '主动入池率',
+        statsPFR: '翻前加注率',
+        stats3Bet: '3-Bet',
+        statsCBet: 'C-Bet',
+        statsFoldToCBet: 'C-Bet弃牌率',
+        statsShowdown: '摊牌率'
     }
 };
 
@@ -485,6 +506,9 @@ function updateLanguageUI() {
 
     // Update hand number display
     updateHandNumberDisplay();
+
+    // Update stats display with new language
+    updateAllPlayerStatsDisplays();
 }
 
 // Update hand number display with translation
@@ -1333,6 +1357,7 @@ function playerFold(playerId) {
     showAction(playerId, t('actionFold'), chipsBeforeAction);
     SoundManager.playFold();
     updateUI();
+    updatePlayerStatsDisplay(playerId);
 }
 
 // Animate AI fold cards flying to center
@@ -1406,6 +1431,8 @@ function playerCheck(playerId) {
     const player = gameState.players[playerId];
     showAction(playerId, t('actionCheck'), player.chips);
     SoundManager.playCheck();
+    updateUI();
+    updatePlayerStatsDisplay(playerId);
 }
 
 function playerCall(playerId) {
@@ -1437,6 +1464,7 @@ function playerCall(playerId) {
     }
 
     updateUI();
+    updatePlayerStatsDisplay(playerId);
 }
 
 function playerRaise(playerId, totalBet) {
@@ -1506,6 +1534,7 @@ function playerRaise(playerId, totalBet) {
     }
 
     updateUI();
+    updatePlayerStatsDisplay(playerId);
 }
 
 function playerAllIn(playerId) {
@@ -1528,6 +1557,7 @@ function playerAllIn(playerId) {
     showAction(playerId, t('actionAllIn'), chipsBeforeAction);
     SoundManager.playAllIn();
     updateUI();
+    updatePlayerStatsDisplay(playerId);
 }
 
 // AI Logic
@@ -1622,6 +1652,7 @@ function removeAIPlayer(playerId) {
 
     // Reset player stats
     resetPlayerStats(player);
+    updatePlayerStatsDisplay(playerId);
 
     // Action log
     const name = `${t('aiPlayer')} ${playerId}`;
@@ -1882,6 +1913,44 @@ function getOpponentProfile(player) {
         isLoose: stats.vpipCount / hands > 0.40,
         isAggressive: stats.pfrCount / hands > 0.25
     };
+}
+
+// Update player stats display tooltip
+function updatePlayerStatsDisplay(playerId) {
+    const player = gameState.players[playerId];
+    if (!player) return;
+
+    const statsEl = document.getElementById(`stats-${playerId}`);
+    if (!statsEl) return;
+
+    const profile = getOpponentProfile(player);
+    const hands = player.stats.handsPlayed;
+
+    statsEl.innerHTML = `
+        <div class="stat-row"><span class="stat-label">${t('statsHands')}</span><span class="stat-value">${hands}</span></div>
+        <div class="stat-row"><span class="stat-label">${t('statsVPIP')}</span><span class="stat-value">${(profile.vpip * 100).toFixed(0)}%</span></div>
+        <div class="stat-row"><span class="stat-label">${t('statsPFR')}</span><span class="stat-value">${(profile.pfr * 100).toFixed(0)}%</span></div>
+        <div class="stat-row"><span class="stat-label">${t('stats3Bet')}</span><span class="stat-value">${(profile.threeBet * 100).toFixed(0)}%</span></div>
+        <div class="stat-row"><span class="stat-label">${t('statsCBet')}</span><span class="stat-value">${(profile.cBet * 100).toFixed(0)}%</span></div>
+        <div class="stat-row"><span class="stat-label">${t('statsFoldToCBet')}</span><span class="stat-value">${(profile.foldToCBet * 100).toFixed(0)}%</span></div>
+        <div class="stat-row"><span class="stat-label">${t('statsShowdown')}</span><span class="stat-value">${(profile.showdownRate * 100).toFixed(0)}%</span></div>
+    `;
+}
+
+// Update all player stats displays
+function updateAllPlayerStatsDisplays() {
+    for (let i = 0; i < gameState.players.length; i++) {
+        updatePlayerStatsDisplay(i);
+    }
+}
+
+// Toggle show all stats
+function toggleShowAllStats() {
+    showAllStats = !showAllStats;
+    localStorage.setItem('showAllStats', showAllStats);
+    document.body.classList.toggle('show-all-stats', showAllStats);
+    document.getElementById('btn-stats-toggle').classList.toggle('active', showAllStats);
+    updateAllPlayerStatsDisplays();
 }
 
 // Calculate bet amount based on pot size and multiplier
@@ -2638,6 +2707,9 @@ async function startNewGame(randomizeDealer = false) {
         }
     }
 
+    // Update stats display after handsPlayed is incremented
+    updateAllPlayerStatsDisplays();
+
     // Check if game can continue (at least human + 1 active AI)
     const playersWithChips = gameState.players.filter(p => !p.isRemoved && p.chips > 0);
     if (playersWithChips.length < 2) {
@@ -2867,6 +2939,9 @@ async function showdown(thisGameId) {
             player.stats.showdownCount++;
         }
     }
+
+    // Update stats display after showdownCount
+    updateAllPlayerStatsDisplays();
 
     // Reveal all cards
     for (const player of playersInHand) {
@@ -3758,3 +3833,15 @@ showMessage(t('startMessage'));
 
 // Mode toggle event listener
 document.getElementById('btn-mode').addEventListener('click', toggleGameMode);
+
+// Stats toggle event listener
+document.getElementById('btn-stats-toggle').addEventListener('click', toggleShowAllStats);
+
+// Initialize stats toggle state
+if (showAllStats) {
+    document.body.classList.add('show-all-stats');
+    document.getElementById('btn-stats-toggle').classList.add('active');
+}
+
+// Initialize stats display with default values
+updateAllPlayerStatsDisplays();

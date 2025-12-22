@@ -29,6 +29,7 @@
                     <option value="none">❌ None</option>
                 </select>
                 <button class="btn-mode" id="btn-mode" title="Toggle Game Mode">FAST</button>
+                <button class="btn-stats-toggle" id="btn-stats-toggle" title="Toggle Stats Display">📊</button>
                 <button class="btn-language" id="btn-language" title="Toggle Language">中文</button>
             </div>
             <button class="btn btn-new-game" id="btn-new-game">NEW GAME</button>
@@ -75,8 +76,10 @@
                     <!-- AI Player 1 at bottom-left (first clockwise after human) -->
                     <div class="player player-bottom-left" id="player-1">
                         <div class="player-info">
-                            <div class="player-avatar" id="avatar-1"><img src="pic/portrait/Loid_Forger_Portrait.png"
-                                    alt="AI"></div>
+                            <div class="player-avatar" id="avatar-1">
+                                <img src="pic/portrait/Loid_Forger_Portrait.png" alt="AI">
+                                <div class="player-stats-tooltip" id="stats-1"></div>
+                            </div>
                             <div class="player-details">
                                 <span class="player-name">AI Player 1</span>
                                 <span class="player-level" id="level-1" title="Click to change difficulty"></span>
@@ -98,8 +101,10 @@
                     <!-- AI Player 2 at top-left -->
                     <div class="player player-top-left" id="player-2">
                         <div class="player-info">
-                            <div class="player-avatar" id="avatar-2"><img src="pic/portrait/Yor_Forger_Portrait.png"
-                                    alt="AI"></div>
+                            <div class="player-avatar" id="avatar-2">
+                                <img src="pic/portrait/Yor_Forger_Portrait.png" alt="AI">
+                                <div class="player-stats-tooltip" id="stats-2"></div>
+                            </div>
                             <div class="player-details">
                                 <span class="player-name">AI Player 2</span>
                                 <span class="player-level" id="level-2" title="Click to change difficulty"></span>
@@ -121,8 +126,10 @@
                     <!-- AI Player 3 at top-right -->
                     <div class="player player-top-right" id="player-3">
                         <div class="player-info">
-                            <div class="player-avatar" id="avatar-3"><img src="pic/portrait/Fiona_Frost_Portrait.png"
-                                    alt="AI"></div>
+                            <div class="player-avatar" id="avatar-3">
+                                <img src="pic/portrait/Fiona_Frost_Portrait.png" alt="AI">
+                                <div class="player-stats-tooltip" id="stats-3"></div>
+                            </div>
                             <div class="player-details">
                                 <span class="player-name">AI Player 3</span>
                                 <span class="player-level" id="level-3" title="Click to change difficulty"></span>
@@ -144,8 +151,10 @@
                     <!-- AI Player 4 at bottom-right (last clockwise before human) -->
                     <div class="player player-bottom-right" id="player-4">
                         <div class="player-info">
-                            <div class="player-avatar" id="avatar-4"><img
-                                    src="pic/portrait/Franky_Franklin_Portrait.png" alt="AI"></div>
+                            <div class="player-avatar" id="avatar-4">
+                                <img src="pic/portrait/Franky_Franklin_Portrait.png" alt="AI">
+                                <div class="player-stats-tooltip" id="stats-4"></div>
+                            </div>
                             <div class="player-details">
                                 <span class="player-name">AI Player 4</span>
                                 <span class="player-level" id="level-4" title="Click to change difficulty"></span>
@@ -180,7 +189,10 @@
                             <div class="card card-placeholder"></div>
                         </div>
                         <div class="player-info">
-                            <div class="player-avatar">👤</div>
+                            <div class="player-avatar" id="avatar-0">
+                                👤
+                                <div class="player-stats-tooltip" id="stats-0"></div>
+                            </div>
                             <div class="player-details">
                                 <span class="player-name">You</span>
                                 <span class="player-chips">$<span id="chips-0">1000</span></span>

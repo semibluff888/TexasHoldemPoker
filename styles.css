@@ -531,7 +531,7 @@ body {
     }
 }
 
-/* Fast mode: Flowing border animation (10 seconds countdown) */
+/* Fast mode: Flowing border animation (variable countdown) */
 .player.active.fast-mode .player-info {
     position: relative;
     border: 2px solid transparent;
@@ -553,7 +553,7 @@ body {
             rgba(255, 255, 255, 0.2) var(--countdown-angle, 0deg),
             rgba(255, 255, 255, 0.2) 360deg);
     z-index: -1;
-    animation: flowBorder 10s linear forwards;
+    animation: flowBorder var(--countdown-duration, 15s) linear forwards;
 }
 
 @keyframes flowBorder {
@@ -828,6 +828,29 @@ body {
     }
 }
 
+/* Post-flop Best Hand Highlight (Human Player) */
+.card.highlight {
+    box-shadow: 0 0 15px var(--accent-gold), 0 0 5px var(--accent-gold) inset !important;
+    border-color: var(--accent-gold) !important;
+    z-index: 100 !important;
+}
+
+/* Hand Rank Name - Vanilla Style */
+.hand-rank-name {
+    position: absolute;
+    bottom: -25px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--accent-gold);
+    font-size: 1rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+    animation: fadeIn 0.3s ease-out;
+    z-index: 20;
+    pointer-events: none;
+}
+
 /* ===== Community Cards ===== */
 .community-cards {
     position: absolute;
@@ -1040,9 +1063,10 @@ body {
 
 .player-bottom .player-bet {
     bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    margin-bottom: 25px;
+    left: auto;
+    right: -40px;
+    transform: none;
+    margin-bottom: 5px;
 }
 
 .player-left .player-bet {

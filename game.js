@@ -48,7 +48,8 @@ const BET_SIZES = { HALF: 0.5, POT: 1.0, DOUBLE: 2.0 };
 
 
 // ===== Game Mode Settings =====
-const COUNTDOWN_DURATION = 10000; // 10 seconds for fast mode
+const COUNTDOWN_DURATION = 15000; // 15 seconds for fast mode
+document.documentElement.style.setProperty('--countdown-duration', (COUNTDOWN_DURATION / 1000) + 's');
 let gameMode = localStorage.getItem('pokerGameMode') || 'fast'; // 'fast' or 'slow'
 let countdownTimerId = null;
 let countdownStartTime = null;
@@ -509,6 +510,10 @@ function updateLanguageUI() {
 
     // Update stats display with new language
     updateAllPlayerStatsDisplays();
+
+    // Update hand rank name display (for best hand highlight)
+    clearHighlightHumanBestHand();
+    highlightHumanBestHand();
 }
 
 // Update hand number display with translation
@@ -927,6 +932,24 @@ function updatePlayerCards(playerId, isHidden = false) {
     }
 
     const hidden = isHidden && player.isAI && gameState.phase !== 'showdown';
+
+    // Skip rebuild if cards already exist and match (preserves highlight classes)
+    // But don't skip if player just folded (need to remove highlight classes)
+    const existingCards = cardsContainer.querySelectorAll('.card-face');
+    if (existingCards.length === player.cards.length && !hidden && !player.folded) {
+        let allMatch = true;
+        existingCards.forEach((el, i) => {
+            const valueEl = el.querySelector('.card-value');
+            const suitEl = el.querySelector('.card-suit');
+            if (!valueEl || !suitEl ||
+                valueEl.textContent !== player.cards[i].value ||
+                suitEl.textContent !== player.cards[i].suit) {
+                allMatch = false;
+            }
+        });
+        if (allMatch) return; // Cards already displayed correctly, skip rebuild
+    }
+
     cardsContainer.innerHTML = player.cards.map(card => getCardHTML(card, hidden, false)).join('');
 }
 
@@ -963,6 +986,31 @@ function updatePlayerCardsAnimated(playerId) {
 
 function updateCommunityCards() {
     const container = document.getElementById('community-cards');
+
+    // Check if we need to rebuild or just add new cards
+    const existingSlots = container.querySelectorAll('.card-slot');
+    const existingFaceCards = container.querySelectorAll('.card-face');
+
+    // If existing cards match current state, skip rebuild (preserves highlight classes)
+    if (existingFaceCards.length === gameState.communityCards.length &&
+        gameState.displayedCommunityCards === gameState.communityCards.length) {
+        let allMatch = true;
+        existingFaceCards.forEach((el, i) => {
+            const valueEl = el.querySelector('.card-value');
+            const suitEl = el.querySelector('.card-suit');
+            if (!valueEl || !suitEl ||
+                valueEl.textContent !== gameState.communityCards[i].value ||
+                suitEl.textContent !== gameState.communityCards[i].suit) {
+                allMatch = false;
+            }
+        });
+        if (allMatch) return; // Cards already displayed correctly, skip rebuild
+    }
+
+    // Clear ALL highlights (including hole cards) when rebuilding community cards
+    // This ensures hole cards and community cards highlights are consistent during animation
+    clearHighlightHumanBestHand();
+
     let html = '';
 
     for (let i = 0; i < 5; i++) {
@@ -987,6 +1035,126 @@ function updateCommunityCards() {
 
     // Update the count of displayed cards
     gameState.displayedCommunityCards = gameState.communityCards.length;
+}
+
+// Clear human player's best hand highlight and hand rank name
+function clearHighlightHumanBestHand() {
+    document.querySelectorAll('.card.highlight').forEach(el => el.classList.remove('highlight'));
+    const existingName = document.querySelector('.hand-rank-name');
+    if (existingName) existingName.remove();
+}
+
+// Highlight best hand for human player (Flop/Turn/River only)
+function highlightHumanBestHand() {
+    // Only run in post-flop phases (flop, turn, river)
+    const validPhases = ['flop', 'turn', 'river'];
+    if (!validPhases.includes(gameState.phase)) return;
+
+    const humanPlayer = gameState.players[0];
+    if (humanPlayer.folded || humanPlayer.isRemoved) {
+        clearHighlightHumanBestHand(); // Clear highlights when player folds
+        return;
+    }
+
+    // Combine hole cards and community cards
+    const allCards = [...humanPlayer.cards, ...gameState.communityCards];
+    // Need at least 5 cards for a valid poker hand
+    if (allCards.length < 5) return;
+
+    const handResult = evaluateHand(allCards);
+
+    // Remove existing hand name display if any
+    const existingName = document.querySelector('.hand-rank-name');
+    if (existingName) existingName.remove();
+
+    // No need to highlight if hand rank is High Card
+    if (handResult.name === 'High Card') {
+        document.querySelectorAll('.card.highlight').forEach(el => el.classList.remove('highlight'));
+        return;
+    }
+
+    // Display corresponding hand rank name
+    const handNameEl = document.createElement('div');
+    handNameEl.className = 'hand-rank-name';
+    handNameEl.textContent = translateHandName(handResult.name);
+
+    // Append to Community Cards container
+    const communityCardsEl = document.getElementById('community-cards');
+    if (communityCardsEl) {
+        communityCardsEl.appendChild(handNameEl);
+    }
+
+    // Highlight cards based on hand type
+    // First clear any existing highlights to be safe
+    document.querySelectorAll('.card.highlight').forEach(el => el.classList.remove('highlight'));
+
+    // Determine which cards to highlight based on hand type
+    let cardsToHighlight = [];
+    const handName = handResult.name;
+    const bestCards = handResult.bestCards;
+
+    if (handName === 'One Pair') {
+        // Find the pair (2 cards with same value)
+        const valueCounts = {};
+        bestCards.forEach(card => {
+            valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
+        });
+        const pairValue = Object.keys(valueCounts).find(v => valueCounts[v] === 2);
+        cardsToHighlight = bestCards.filter(card => card.value === pairValue);
+    } else if (handName === 'Two Pair') {
+        // Find both pairs (4 cards total)
+        const valueCounts = {};
+        bestCards.forEach(card => {
+            valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
+        });
+        const pairValues = Object.keys(valueCounts).filter(v => valueCounts[v] === 2);
+        cardsToHighlight = bestCards.filter(card => pairValues.includes(card.value));
+    } else if (handName === 'Three of a Kind') {
+        // Find the trips (3 cards with same value)
+        const valueCounts = {};
+        bestCards.forEach(card => {
+            valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
+        });
+        const tripsValue = Object.keys(valueCounts).find(v => valueCounts[v] === 3);
+        cardsToHighlight = bestCards.filter(card => card.value === tripsValue);
+    } else if (handName === 'Four of a Kind') {
+        // Find the quads (4 cards with same value)
+        const valueCounts = {};
+        bestCards.forEach(card => {
+            valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
+        });
+        const quadsValue = Object.keys(valueCounts).find(v => valueCounts[v] === 4);
+        cardsToHighlight = bestCards.filter(card => card.value === quadsValue);
+    } else if (handName === 'Full House') {
+        // Highlight all 5 cards (3 + 2)
+        cardsToHighlight = bestCards;
+    } else {
+        // Straight, Flush, Straight Flush, Royal Flush - highlight all 5
+        cardsToHighlight = bestCards;
+    }
+
+    // Helper to find and highlight a card in a container
+    const highlightCardInContainer = (containerId, card) => {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const cardEls = container.querySelectorAll('.card');
+
+        cardEls.forEach(el => {
+            // Match by value and suit text content
+            const valueEl = el.querySelector('.card-value');
+            const suitEl = el.querySelector('.card-suit');
+            if (valueEl && suitEl) {
+                if (valueEl.textContent === card.value && suitEl.textContent === card.suit) {
+                    el.classList.add('highlight');
+                }
+            }
+        });
+    };
+
+    cardsToHighlight.forEach(card => {
+        highlightCardInContainer('cards-0', card);
+        highlightCardInContainer('community-cards', card);
+    });
 }
 
 // UI Updates
@@ -1083,6 +1251,7 @@ function updateUI() {
 
     updateCommunityCards();
     updateControls();
+    highlightHumanBestHand();
 }
 
 function updateBetDisplay(playerId) {
@@ -2924,6 +3093,7 @@ async function dealRiver(thisGameId) {
 
 async function showdown(thisGameId) {
     gameState.phase = 'showdown';
+    clearHighlightHumanBestHand(); // Clear post-flop highlights before showdown
 
     // Animate final bets to pot before showdown
     await resetBets(thisGameId);

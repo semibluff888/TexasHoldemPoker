@@ -544,19 +544,19 @@ function updateHandNumberDisplay() {
 const SoundManager = {
     // Sound URLs from free sources (Mixkit - royalty-free)
     sounds: {
-        cardDeal: 'SOUND/card_deal.mp3',
-        cardFlip: 'SOUND/card_deal.mp3',
-        chips: 'SOUND/chips.mp3',
-        check: 'SOUND/check.mp3',
-        fold: 'SOUND/fold.mp3',
-        win: 'SOUND/win.mp3',
-        // win: 'SOUND/win2.wav',
-        yourTurn: 'SOUND/ding.mp3',
-        allIn: 'SOUND/all in.mp3'
+        cardDeal: 'sound/card_deal.mp3',
+        cardFlip: 'sound/card_deal.mp3',
+        chips: 'sound/chips.mp3',
+        check: 'sound/check.mp3',
+        fold: 'sound/fold.mp3',
+        win: 'sound/win.mp3',
+        // win: 'sound/win2.wav',
+        yourTurn: 'sound/ding.mp3',
+        allIn: 'sound/all in.mp3'
     },
 
     // Background music (lofi/chill)
-    musicUrl: 'SOUND/Jazz at Mladost Club - Blue Monk.mp3',
+    musicUrl: 'sound/Jazz at Mladost Club - Blue Monk.mp3',
 
     // Audio elements cache
     audioCache: {},
